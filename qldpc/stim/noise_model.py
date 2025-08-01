@@ -8,13 +8,13 @@ The main components of this module are:
 Examples of basic usage with a predefined noise model:
 
     import stim
-    from qldpc.stim.noise_model import NoiseModel
+    from qldpc.stim.noise_model import NoiseModel, SI1000NoiseModel
 
     # Create a simple circuit
     circuit = stim.Circuit("H 0 \n CX 0 1")
 
     # Apply superconducting-inspired noise
-    noise_model = SI1000NoiseModel.(0.001)
+    noise_model = SI1000NoiseModel(0.001)
     noisy_circuit = noise_model.noisy_circuit(circuit)
 
     # Create a custom noise model
