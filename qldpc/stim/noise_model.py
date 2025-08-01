@@ -8,10 +8,14 @@ The main components of this module are:
 Examples of basic usage with a predefined noise model:
 
     import stim
-    from qldpc.stim.noise_model import NoiseModel, SI1000NoiseModel
+    from qldpc.stim.noise_model import DepolarizingNoiseModel, NoiseModel, SI1000NoiseModel
 
     # Create a simple circuit
     circuit = stim.Circuit("H 0 \n CX 0 1")
+
+    # Apply simple depolarizing noise
+    noise_model = DepolarizingNoiseModel(0.001)
+    noisy_circuit = noise_model.noisy_circuit(circuit)
 
     # Apply superconducting-inspired noise
     noise_model = SI1000NoiseModel(0.001)
@@ -19,12 +23,12 @@ Examples of basic usage with a predefined noise model:
 
     # Create a custom noise model
     custom_model = NoiseModel(
-         clifford_1q_error=3e-5,
-         clifford_2q_error=1e-3,
-         readout_error=1e-3,
-         reset_error=1e-3,
-         idle_error=2e-4,
-     )
+        clifford_1q_error=3e-5,
+        clifford_2q_error=1e-3,
+        readout_error=1e-3,
+        reset_error=1e-3,
+        idle_error=2e-4,
+    )
     noisy_circuit = custom_model.noisy_circuit(circuit)
 
 
