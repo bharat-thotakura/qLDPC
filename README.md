@@ -22,7 +22,7 @@ If you use macOS you may need to install `cvxpy` manually by following the instr
 
 ### GAP
 
-Some features in `qLDPC` require an installation of the computer algebra system [GAP](https://www.gap-system.org/).  If you use linux or macOS and use a `conda` to manage your python environment, you can obtain `gap` by running `conda install -c conda-forge gap`.  Unfortunately, I have not figured out how to install [GAP](https://www.gap-system.org/) in a `qldpc`-compatible way on Windows.  If you figure this out, [please let me know](https://github.com/qLDPCOrg/qLDPC/issues/294)!
+Some features in `qLDPC` require an installation of the computer algebra system [GAP](https://www.gap-system.org/).  If you use linux or macOS and use a `conda` to manage your python environment, you can obtain GAP by running `conda install -c conda-forge gap`.  Unfortunately, I have not figured out how to install [GAP](https://www.gap-system.org/) in a `qLDPC`-compatible way on Windows.  If you figure this out, [please let me know](https://github.com/qLDPCOrg/qLDPC/issues/294)!
 
 ## 🚀 Features
 
