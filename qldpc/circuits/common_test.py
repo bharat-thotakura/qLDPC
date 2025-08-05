@@ -57,3 +57,17 @@ def test_state_prep() -> None:
         for op in codes.QuditCode.get_gauge_ops(code, Pauli.Z):
             string = op_to_string(op)
             assert simulator.peek_observable_expectation(string) == 1
+
+
+def test_logical_tableau() -> None:
+    """Reconstruct a logical tableau."""
+    code = codes.FiveQubitCode()
+    encoder, decoder = circuits.get_encoder_and_decoder(code, deformation=stim.Circuit())
+
+    logical_circuit = stim.Circuit("H 0")
+    extended_logical_circuit = logical_circuit + stim.Circuit(f"I {len(code) - 1}")
+    physical_tableau = decoder.then(extended_logical_circuit.to_tableau()).then(encoder)
+    physical_circuit = physical_tableau.to_circuit()
+
+    reconstructed_logical_tableau = circuits.get_logical_tableau(code, physical_circuit)
+    assert logical_circuit.to_tableau() == reconstructed_logical_tableau
