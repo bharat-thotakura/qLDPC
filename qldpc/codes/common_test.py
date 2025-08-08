@@ -237,6 +237,7 @@ def test_qudit_code() -> None:
     assert code.dimension == 1
     assert code.get_weight() == 4
     assert code.get_logical_ops(Pauli.X).shape == code.get_logical_ops(Pauli.Z).shape
+    assert codes.QuditCode.equiv(code, codes.QuditCode(code))
 
     # equivlence to code with redundant stabilizers
     redundant_code = codes.QuditCode(np.vstack([code.matrix, code.matrix]))
