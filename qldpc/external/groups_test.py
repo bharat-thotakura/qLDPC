@@ -102,6 +102,7 @@ def test_maybe_get_generators_from_groupnames() -> None:
 
 def test_maybe_get_generators_from_gap() -> None:
     """Retrieve generators from GAP 4."""
+    external.gap.require_package.cache_clear()
     with unittest.mock.patch("qldpc.external.gap.is_installed", return_value=False):
         assert external.groups.maybe_get_generators_from_gap(GROUP) is None
 
