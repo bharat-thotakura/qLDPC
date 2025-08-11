@@ -86,6 +86,7 @@ def get_small_group_structure(order: int, index: int) -> str:
     # try to retrieve the structure from GAP
     name = f"SmallGroup({order},{index})"
     if qldpc.external.gap.is_installed():
+        qldpc.external.gap.require_package("SmallGrp")
         command = f"Print(StructureDescription({name}));"
         structure = qldpc.external.gap.get_output(command).strip()
 
