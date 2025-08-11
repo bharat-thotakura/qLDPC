@@ -1,4 +1,4 @@
-"""Custom decoders
+"""Custom decoder classes
 
 Copyright 2023 The qLDPC Authors and Infleqtion Inc.
 
