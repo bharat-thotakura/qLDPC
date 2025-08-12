@@ -695,6 +695,7 @@ class HGPCode(CSSCode):
     - https://www.youtube.com/watch?v=iehMcUr2saM
     - https://arxiv.org/abs/0903.0566
     - https://arxiv.org/abs/1202.0928
+    - https://arxiv.org/abs/0903.0566
     """
 
     sector_size: npt.NDArray[np.int_]
