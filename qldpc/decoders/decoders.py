@@ -23,7 +23,7 @@ import numpy as np
 import numpy.typing as npt
 import pymatching
 
-from .custom import Decoder, GUFDecoder, ILPDecoder, LookupDecoder
+from .custom import BatchDecoder, Decoder, GUFDecoder, ILPDecoder, LookupDecoder, RelayBPDecoder
 
 PLACEHOLDER_ERROR_RATE = 1e-3  # required for some decoding methods
 
@@ -52,6 +52,9 @@ def get_decoder(matrix: npt.NDArray[np.int_], **decoder_args: object) -> Decoder
 
     if decoder_args.pop("with_BF", False):
         return get_decoder_BF(matrix, **decoder_args)
+
+    if name := decoder_args.pop("with_RBP", None):
+        return get_decoder_RBP(name, matrix, **decoder_args)
 
     if decoder_args.pop("with_MWPM", False):
         return get_decoder_MWPM(matrix, **decoder_args)
@@ -113,9 +116,32 @@ def get_decoder_BF(matrix: npt.NDArray[np.int_], **decoder_args: object) -> Deco
     return ldpc.BeliefFindDecoder(matrix, **decoder_args)
 
 
-def get_decoder_MWPM(matrix: npt.NDArray[np.int_], **decoder_args: object) -> Decoder:
+def get_decoder_MWPM(matrix: npt.NDArray[np.int_], **decoder_args: object) -> BatchDecoder:
     """Decoder based on minimum weight perfect matching (MWPM)."""
     return pymatching.Matching.from_check_matrix(matrix, **decoder_args)
+
+
+def get_decoder_RBP(
+    name: object, matrix: npt.NDArray[np.int_], **decoder_args: object
+) -> RelayBPDecoder:
+    """Relay-BP decoders.
+
+    For details about Relay-BP decoders, see:
+    - Documentation: https://pypi.org/project/relay-bp/
+    - Reference: https://arxiv.org/abs/2506.01779
+    """
+    try:
+        import relay_bp
+    except ImportError:
+        raise ImportError("Failed to import relay-bp.  Try installing 'qldpc[relay-bp]'")
+    if not isinstance(name, str) or not hasattr(relay_bp, name):
+        raise ValueError(f"Relay BP decoder name not recognized: {name}")
+
+    error_priors = decoder_args.pop(
+        "error_priors", np.ones(matrix.shape[1], dtype=np.float64) * PLACEHOLDER_ERROR_RATE
+    )
+    decoder = getattr(relay_bp, name)(matrix, error_priors, **decoder_args)
+    return RelayBPDecoder(decoder)
 
 
 def get_decoder_lookup(matrix: npt.NDArray[np.int_], **decoder_args: object) -> LookupDecoder:
