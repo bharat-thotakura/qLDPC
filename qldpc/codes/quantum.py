@@ -686,16 +686,15 @@ class HGPCode(CSSCode):
 
     This class contains two equivalent constructions of an HGPCode:
     - A construction based on Tanner graphs (as discussed above).
-    - A construction based on check matrices, taken from arXiv:2202.01702.
+    - A construction based on check matrices, as originally introduced in arXiv:0903.0566.
     The latter construction is less intuitive, but more efficient.
 
     References:
     - https://errorcorrectionzoo.org/c/hypergraph_product
-    - https://arxiv.org/abs/2202.01702
-    - https://www.youtube.com/watch?v=iehMcUr2saM
     - https://arxiv.org/abs/0903.0566
     - https://arxiv.org/abs/1202.0928
-    - https://arxiv.org/abs/0903.0566
+    - https://arxiv.org/abs/2202.01702
+    - https://www.youtube.com/watch?v=iehMcUr2saM
     """
 
     sector_size: npt.NDArray[np.int_]
@@ -708,7 +707,7 @@ class HGPCode(CSSCode):
         *,
         set_logicals: bool = True,
     ) -> None:
-        """Hypergraph product of two classical codes, as in arXiv:2202.01702.
+        """Hypergraph product of two classical codes, as in arXiv:0903.0566.
 
         The parity check matrices of the hypergraph product code are:
 
