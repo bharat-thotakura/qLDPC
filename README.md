@@ -10,7 +10,9 @@ In a nutshell, `qLDPC` provides supports a variety of built-in codes and custom 
 - defining custom Pauli noise models,
 - plugging a decoder of choice into your workflow.
 
-Where possible, this library strives to support qudit codes over arbitrary finite (Galois) fields, although circuit-related utilities are (at least currently) limited to qubit codes.  See the [`examples`](https://github.com/qLDPCOrg/qLDPC/tree/main/examples) directory for some demonstrations and use-cases.
+See the [`examples`](https://github.com/qLDPCOrg/qLDPC/tree/main/examples) directory for some demonstrations and use-cases.
+
+Where possible, this library strives to support codes over arbitrary finite (Galois) fields -- that is, for qudits of any prime power dimension.  Circuit-related utilities are, however, limited to qubit codes.
 
 ## 📦 Installation
 
