@@ -1248,7 +1248,11 @@ class QuditCode(AbstractCode):
     def get_dual_subsystem_code(self) -> QuditCode:
         """Get the subsystem code that swaps gauge and logical qudits of this code."""
         matrix = np.vstack([self.get_stabilizer_ops(), self.get_logical_ops()])
-        return QuditCode(matrix, is_subsystem_code=self.dimension != 0)
+        code = QuditCode(matrix, is_subsystem_code=self.dimension != 0)
+        code._stabilizer_ops = self._stabilizer_ops
+        code._logical_ops = self._gauge_ops
+        code._gauge_ops = self._logical_ops
+        return code
 
     @functools.cached_property
     def dimension(self) -> int:
@@ -2038,7 +2042,11 @@ class CSSCode(QuditCode):
         """Get the subsystem code that swaps gauge and logical qudits of this code."""
         matrix_x = np.vstack([self.get_stabilizer_ops(Pauli.X), self.get_logical_ops(Pauli.X)])
         matrix_z = np.vstack([self.get_stabilizer_ops(Pauli.Z), self.get_logical_ops(Pauli.Z)])
-        return CSSCode(matrix_x, matrix_z, is_subsystem_code=self.dimension != 0)
+        code = CSSCode(matrix_x, matrix_z, is_subsystem_code=self.dimension != 0)
+        code._stabilizer_ops = self._stabilizer_ops
+        code._logical_ops = self._gauge_ops
+        code._gauge_ops = self._logical_ops
+        return code
 
     def get_distance(
         self, pauli: PauliXZ | None = None, *, bound: int | bool | None = None, **bound_kwargs: Any
