@@ -505,16 +505,21 @@ def test_css_code() -> None:
 
 
 def test_css_ops() -> None:
-    """Logical operator construction for CSS codes."""
+    """Logical and stabilizer operator construction for CSS codes."""
     code: codes.CSSCode
 
-    code = codes.HGPCode(codes.ClassicalCode.random(4, 2, field=3))
+    code = codes.SHPCode(codes.ClassicalCode.random(4, 2, field=3))
 
     # swap around logical operators
     code.set_logical_ops_xz(
         code.get_logical_ops(Pauli.X)[::-1],
         code.get_logical_ops(Pauli.Z)[::-1],
     )
+
+    # identify stabilizer group
+    code._stabilizer_ops = None
+    assert not np.any(code.get_stabilizer_ops() @ symplectic_conjugate(code.get_logical_ops()).T)
+    assert not np.any(code.get_stabilizer_ops() @ symplectic_conjugate(code.get_gauge_ops()).T)
 
     # successfully construct and reduce logical operators in a code with "over-complete" checks
     dist = 4
