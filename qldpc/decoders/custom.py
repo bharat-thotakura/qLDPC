@@ -93,8 +93,8 @@ class LookupDecoder(Decoder):
     support by the first and second half of their entries.
     """
 
-    matrix: npt.NDArray[np.int_]
-    table: dict[tuple[int, ...], npt.NDArray[np.int_]]
+    shape: tuple[int, ...]  # the shape of the parity check matrix we are decoding
+    table: dict[tuple[int, ...], npt.NDArray[np.int_]]  # the lookup table
 
     def __init__(
         self,
@@ -112,8 +112,6 @@ class LookupDecoder(Decoder):
             code = codes.QuditCode(matrix)
             field = code.field
             matrix = symplectic_conjugate(code.matrix)
-
-        self.matrix = matrix
 
         if max_weight is None:
             warnings.warn(
@@ -144,11 +142,11 @@ class LookupDecoder(Decoder):
                     syndrome = matrix @ code_error
                     self.table[tuple(syndrome.view(np.ndarray))] = code_error.view(np.ndarray)
 
+        self.shape = matrix.shape
+
     def decode(self, syndrome: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
         """Decode an error syndrome and return an inferred error."""
-        return self.table.get(
-            tuple(syndrome.view(np.ndarray)), np.zeros(self.matrix.shape[1], dtype=int)
-        )
+        return self.table.get(tuple(syndrome.view(np.ndarray)), np.zeros(self.shape[1], dtype=int))
 
 
 class ILPDecoder(Decoder):
