@@ -93,6 +93,9 @@ class LookupDecoder(Decoder):
     support by the first and second half of their entries.
     """
 
+    matrix: npt.NDArray[np.int_]
+    table: dict[tuple[int, ...], npt.NDArray[np.int_]]
+
     def __init__(
         self,
         matrix: npt.NDArray[np.int_],
@@ -109,6 +112,8 @@ class LookupDecoder(Decoder):
             code = codes.QuditCode(matrix)
             field = code.field
             matrix = symplectic_conjugate(code.matrix)
+
+        self.matrix = matrix
 
         if max_weight is None:
             warnings.warn(
@@ -127,7 +132,7 @@ class LookupDecoder(Decoder):
         repeat = 2 if symplectic else 1
         local_errors = tuple(itertools.product(range(field.order), repeat=repeat))[1:]
 
-        self.table: dict[tuple[int, ...], npt.NDArray[np.int_]] = {}
+        self.table = {}
         block_length = matrix.shape[1] // repeat
         for weight in range(max_weight, 0, -1):
             for error_sites in itertools.combinations(range(block_length), weight):
@@ -139,11 +144,11 @@ class LookupDecoder(Decoder):
                     syndrome = matrix @ code_error
                     self.table[tuple(syndrome.view(np.ndarray))] = code_error.view(np.ndarray)
 
-        self.null_correction = np.zeros(matrix.shape[1], dtype=int)
-
     def decode(self, syndrome: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
         """Decode an error syndrome and return an inferred error."""
-        return self.table.get(tuple(syndrome.view(np.ndarray)), self.null_correction.copy())
+        return self.table.get(
+            tuple(syndrome.view(np.ndarray)), np.zeros(self.matrix.shape[1], dtype=int)
+        )
 
 
 class ILPDecoder(Decoder):
