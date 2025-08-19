@@ -103,6 +103,8 @@ class LookupDecoder(Decoder):
         max_weight: int | None = None,
         symplectic: bool = False,
     ) -> None:
+        self.shape = matrix.shape
+
         code: codes.ClassicalCode | codes.QuditCode
         if not symplectic:
             code = codes.ClassicalCode(matrix)
@@ -141,8 +143,6 @@ class LookupDecoder(Decoder):
                     code_error = code_error.ravel()
                     syndrome = matrix @ code_error
                     self.table[tuple(syndrome.view(np.ndarray))] = code_error.view(np.ndarray)
-
-        self.shape = matrix.shape
 
     def decode(self, syndrome: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
         """Decode an error syndrome and return an inferred error."""
