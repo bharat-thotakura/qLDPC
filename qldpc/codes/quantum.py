@@ -18,6 +18,7 @@ limitations under the License.
 from __future__ import annotations
 
 import ast
+import collections
 import functools
 import itertools
 import math
@@ -750,6 +751,58 @@ class HGPCode(CSSCode):
             logical_ops_xz = HGPCode.get_canonical_logical_ops(self.code_a, self.code_b)
             self.set_logical_ops_xz(*logical_ops_xz, validate=False)
 
+    @functools.cached_property
+    def syndrome_subgraphs(self, strategy: str = "smallest_last") -> tuple[nx.DiGraph, ...]:
+        """Sequence of subgraphs of the Tanner graph that induces a syndrome extraction sequence.
+
+        The sequence here is essentially that for hypergraph product codes in arXiv:2109.14609,
+        modified to obviate the need to find a balanced ordering of Tanner graph vertices.
+
+        More specifically, this method constructs Tanner subgraphs as follows:
+        1. For the classical seed code that defines vertical edges of this HGPCode (self.code_a),
+            color the edges of its Tanner graph, and number these colors starting at zero.
+        2. Even edges get assigned a "north" or "south" direction if they are associated,
+            respectively, with X-type or Z-type parity checks.  Odd edges get assigned the opposite
+            direction.
+        3. Steps 1 and 2 are repeated for the horizontal code (self.code_b), with (north, south)
+            replaced by (east, west).
+        """
+        node_map = HGPCode.get_product_node_map(self.code_a.graph.nodes, self.code_b.graph.nodes)
+
+        # collect subgraphs of North and South edges
+        edges_n: dict[int, list[tuple[Node, Node]]] = collections.defaultdict(list)
+        edges_s: dict[int, list[tuple[Node, Node]]] = collections.defaultdict(list)
+        coloring_a = nx.coloring.greedy_color(
+            nx.line_graph(self.code_a.graph.to_undirected()), strategy
+        )
+        for (check_a, data_a), color in coloring_a.items():
+            for node_b in self.code_b.graph.nodes:
+                node_0 = node_map[check_a, node_b]
+                node_1 = node_map[data_a, node_b]
+                data, check = sorted([node_0, node_1])
+                edges_ns = edges_s if (color + node_b.is_data) % 2 == 0 else edges_n
+                edges_ns[color].append((check, data))
+        graphs_n = tuple(self.graph.edge_subgraph(edges) for edges in edges_n.values())
+        graphs_s = tuple(self.graph.edge_subgraph(edges) for edges in edges_s.values())
+
+        # collect subgraphs of East and West edges
+        edges_e: dict[int, list[tuple[Node, Node]]] = collections.defaultdict(list)
+        edges_w: dict[int, list[tuple[Node, Node]]] = collections.defaultdict(list)
+        coloring_b = nx.coloring.greedy_color(
+            nx.line_graph(self.code_b.graph.to_undirected()), strategy
+        )
+        for (check_b, data_b), color in coloring_b.items():
+            for node_a in self.code_a.graph.nodes:
+                node_0 = node_map[node_a, check_b]
+                node_1 = node_map[node_a, data_b]
+                data, check = sorted([node_0, node_1])
+                edges_ew = edges_e if (color + node_b.is_data) % 2 == 0 else edges_w
+                edges_ew[color].append((check, data))
+        graphs_e = tuple(self.graph.edge_subgraph(edges) for edges in edges_e.values())
+        graphs_w = tuple(self.graph.edge_subgraph(edges) for edges in edges_w.values())
+
+        return graphs_n + graphs_e + graphs_w + graphs_s
+
     @staticmethod
     def get_matrix_product(
         matrix_a: npt.NDArray[np.int_ | np.object_],
@@ -1355,7 +1408,14 @@ class SurfaceCode(CSSCode):
 
     Actually, there are two variants: "ordinary" and "rotated" surface codes.
     The rotated code is more qubit-efficient.
+
+    References:
+    - https://errorcorrectionzoo.org/c/toric
+    - https://errorcorrectionzoo.org/c/surface
+    - https://errorcorrectionzoo.org/c/rotated_surface
     """
+
+    _syndrome_subgraphs: tuple[nx.DiGraph, ...] | None = None
 
     def __init__(
         self,
@@ -1369,6 +1429,7 @@ class SurfaceCode(CSSCode):
             cols = rows
         self.rows = rows
         self.cols = cols
+        self.rotated = rotated
 
         # save known distances and dimension
         self._distance_x = cols
@@ -1383,6 +1444,9 @@ class SurfaceCode(CSSCode):
             matrix_x = code_ab.matrix_x.view(np.ndarray)
             matrix_z = code_ab.matrix_z.view(np.ndarray)
             self._default_conjugate: list[int] | slice = slice(code_ab.sector_size[0, 0], None)
+
+            # save cardinality data about check/data qubit connections
+            self._syndrome_subgraphs = code_ab.syndrome_subgraphs
 
         else:
             # rotated surface code
@@ -1429,15 +1493,24 @@ class SurfaceCode(CSSCode):
         - Circles (○) denote data qubits (of which there are 5×5 = 25 total).
         - Tiles with a cross (×) denote X-type parity checks (12 total).
         - Tiles with a dot (⋅) denote Z-type parity checks (12 total).
-
-        References:
-        - https://errorcorrectionzoo.org/c/rotated_surface
         """
 
-        def get_check(
-            row_indices: Sequence[int], col_indices: Sequence[int]
-        ) -> npt.NDArray[np.int_]:
+        def get_check_pauli(row: int, col: int) -> PauliXZ:
+            """What type of stabilizer does this check measure?"""
+            return Pauli.X if (row + col) % 2 == 0 else Pauli.Z
+
+        def check_is_used(row: int, col: int) -> bool:
+            """Is the check qubit with these coordinates used?"""
+            if row == 0 or row == rows:
+                return 0 < col < cols and get_check_pauli(row, col) is Pauli.Z
+            if col == 0 or col == cols:
+                return 0 < row < rows and get_check_pauli(row, col) is Pauli.X
+            return 0 < row < rows and 0 < col < cols
+
+        def get_check(row: int, col: int) -> npt.NDArray[np.int_]:
             """Check on the qubits with the given indices, dropping any that are out of bounds."""
+            row_indices = [row - 1, row, row - 1, row]
+            col_indices = [col - 1, col - 1, col, col]
             check = np.zeros((rows, cols), dtype=int)
             for row, col in zip(row_indices, col_indices):
                 if 0 <= row < rows and 0 <= col < cols:
@@ -1446,33 +1519,105 @@ class SurfaceCode(CSSCode):
 
         checks_x = []
         checks_z = []
-        for row in range(-1, rows):
-            for col in range(-1, cols):
-                row_indices = [row, row + 1, row, row + 1]
-                col_indices = [col, col, col + 1, col + 1]
-                check = get_check(row_indices, col_indices)
-
-                # exclude exterior corner tiles that only touch one data qubit
-                if np.count_nonzero(check) == 1:
-                    continue
-
-                if row % 2 == col % 2:
-                    if 0 <= row < rows - 1:
-                        # no X-type parity checks on the top/bottom boundaries
-                        checks_x.append(check)
-                elif 0 <= col < cols - 1:
-                    # no Z-type parity checks on the left/right boundaries
+        for row, col in itertools.product(range(rows + 1), range(cols + 1)):
+            if check_is_used(row, col):
+                check = get_check(row, col)
+                if get_check_pauli(row, col) is Pauli.X:
+                    checks_x.append(check)
+                else:
                     checks_z.append(check)
 
         return np.array(checks_x), np.array(checks_z)
+
+    @property
+    def syndrome_subgraphs(self) -> tuple[nx.DiGraph, ...]:
+        """Sequence of subgraphs of the Tanner graph that induces a syndrome extraction sequence.
+
+        If this is an unrotated surface code, return the syndrome subgraphs of the parent HGPCode.
+        Otherwise, return the subgraphs of (NW, NE, SW, SE)-facing edges of the Tanner graph.
+        """
+        if self._syndrome_subgraphs is not None:
+            return self._syndrome_subgraphs
+
+        assert self.rotated
+
+        def get_check_pauli(row: int, col: int) -> PauliXZ:
+            """What type of stabilizer does this check measure?"""
+            return Pauli.X if (row + col) % 2 == 0 else Pauli.Z
+
+        def check_is_used(row: int, col: int) -> bool:
+            """Is the check qubit with these coordinates used?"""
+            if row == 0 or row == self.rows:
+                return 0 < col < self.cols and get_check_pauli(row, col) is Pauli.Z
+            if col == 0 or col == self.cols:
+                return 0 < row < self.rows and get_check_pauli(row, col) is Pauli.X
+            return 0 < row < self.rows and 0 < col < self.cols
+
+        # identify all coordinates of check qubits, and a map from coordinates to a Node
+        check_node_coords = sorted(
+            [
+                (row, col)
+                for row, col in itertools.product(range(self.rows + 1), range(self.cols + 1))
+                if check_is_used(row, col)
+            ],
+            key=lambda row_col: (int(get_check_pauli(*row_col)), *row_col),
+        )
+        node_map = {
+            (row, col): Node(index, is_data=False)
+            for index, (row, col) in enumerate(check_node_coords)
+        }
+
+        # collect edges of the Tanner graph by type: (pauli, orientation)
+        edges: dict[tuple[Pauli, str], list[tuple[Node, Node]]] = collections.defaultdict(list)
+        for qubit, (row, col) in enumerate(itertools.product(range(self.rows), range(self.cols))):
+            data_node = Node(qubit, is_data=True)
+
+            check_nw = (row, col)
+            check_ne = (row, col + 1)
+            check_sw = (row + 1, col)
+            check_se = (row + 1, col + 1)
+            if check_is_used(*check_nw):
+                check_pauli = get_check_pauli(*check_nw)
+                check_node = node_map[check_nw]
+                edges[check_pauli, "nw"].append((check_node, data_node))
+            if check_is_used(*check_ne):
+                check_pauli = get_check_pauli(*check_ne)
+                check_node = node_map[check_ne]
+                edges[check_pauli, "ne"].append((check_node, data_node))
+            if check_is_used(*check_sw):
+                check_pauli = get_check_pauli(*check_sw)
+                check_node = node_map[check_sw]
+                edges[check_pauli, "sw"].append((check_node, data_node))
+            if check_is_used(*check_se):
+                check_pauli = get_check_pauli(*check_se)
+                check_node = node_map[check_se]
+                edges[check_pauli, "se"].append((check_node, data_node))
+
+        # return subgraphs in the order that minimizes hook errors
+        subgraphs = {key: self.graph.edge_subgraph(edge_group) for key, edge_group in edges.items()}
+        self._syndrome_subgraphs = (
+            subgraphs[Pauli.X, "nw"],
+            subgraphs[Pauli.Z, "nw"],
+            subgraphs[Pauli.X, "sw"],
+            subgraphs[Pauli.X, "ne"],
+            subgraphs[Pauli.Z, "ne"],
+            subgraphs[Pauli.Z, "sw"],
+            subgraphs[Pauli.X, "se"],
+            subgraphs[Pauli.Z, "se"],
+        )
+        return self._syndrome_subgraphs
 
 
 class ToricCode(CSSCode):
     """Surface code with periodic boundary conditions, encoding two logical qudits.
 
     References:
+    - https://errorcorrectionzoo.org/c/toric
     - https://errorcorrectionzoo.org/c/surface
+    - https://errorcorrectionzoo.org/c/rotated_surface
     """
+
+    _syndrome_subgraphs: tuple[nx.DiGraph, ...] | None = None
 
     def __init__(
         self,
@@ -1486,6 +1631,7 @@ class ToricCode(CSSCode):
             cols = rows
         self.rows = rows
         self.cols = cols
+        self.rotated = rotated
 
         # save known distances and dimension
         self._distance_x = self._distance_z = min(rows, cols)
@@ -1499,6 +1645,9 @@ class ToricCode(CSSCode):
             matrix_x = code_ab.matrix_x.view(np.ndarray)
             matrix_z = code_ab.matrix_z.view(np.ndarray)
             self._default_conjugate: list[int] | slice = slice(code_ab.sector_size[0, 0], None)
+
+            # save cardinality data about check/data qubit connections
+            self._syndrome_subgraphs = code_ab.syndrome_subgraphs
 
         else:
             # rotated toric code
@@ -1540,28 +1689,73 @@ class ToricCode(CSSCode):
         Same as in SurfaceCode.get_rotated_checks, but with periodic boundary conditions.
         """
 
-        def get_check(
-            row_indices: Sequence[int], col_indices: Sequence[int]
-        ) -> npt.NDArray[np.int_]:
-            """Check on the qubits with the given indices, with periodic boundary conditions."""
+        def get_check_pauli(row: int, col: int) -> PauliXZ:
+            """What type of stabilizer does this check measure?"""
+            return Pauli.X if (row + col) % 2 == 0 else Pauli.Z
+
+        def get_check(row: int, col: int) -> npt.NDArray[np.int_]:
+            """Check on the qubits with the given indices, dropping any that are out of bounds."""
+            row_indices = np.array([row - 1, row, row - 1, row]) % rows
+            col_indices = np.array([col - 1, col - 1, col, col]) % cols
             check = np.zeros((rows, cols), dtype=int)
             for row, col in zip(row_indices, col_indices):
-                check[row % rows, col % cols] = 1
+                check[row, col] = 1
             return check.ravel()
 
         checks_x = []
         checks_z = []
-        for row in range(rows):
-            for col in range(cols):
-                row_indices = [row, row + 1, row, row + 1]
-                col_indices = [col, col, col + 1, col + 1]
-                check = get_check(row_indices, col_indices)
-                if row % 2 == col % 2:
-                    checks_x.append(check)
-                else:
-                    checks_z.append(check)
+        for row, col in itertools.product(range(rows), range(cols)):
+            check = get_check(row, col)
+            if get_check_pauli(row, col) is Pauli.X:
+                checks_x.append(check)
+            else:
+                checks_z.append(check)
 
         return np.array(checks_x), np.array(checks_z)
+
+    @property
+    def syndrome_subgraphs(self) -> tuple[nx.DiGraph, ...]:
+        """Sequence of subgraphs of the Tanner graph that induces a syndrome extraction sequence.
+
+        If this is an unrotated surface code, return the syndrome subgraphs of the parent HGPCode.
+        Otherwise, return the subgraphs of (NW, NE, SW, SE)-facing edges of the Tanner graph.
+        """
+        if self._syndrome_subgraphs is not None:
+            return self._syndrome_subgraphs
+
+        assert self.rotated
+
+        def get_check_pauli(row: int, col: int) -> PauliXZ:
+            """What type of stabilizer does this check measure?"""
+            return Pauli.X if (row + col) % 2 == 0 else Pauli.Z
+
+        # identify all coordinates of check qubits, and a map from coordinates to a Node
+        check_node_coords = sorted(
+            [(row, col) for row, col in itertools.product(range(self.rows), range(self.cols))],
+            key=lambda row_col: (int(get_check_pauli(*row_col)), *row_col),
+        )
+        node_map = {
+            (row, col): Node(index, is_data=False)
+            for index, (row, col) in enumerate(check_node_coords)
+        }
+
+        # collect edges of the Tanner graph by type (orientation)
+        edges: dict[str, list[tuple[Node, Node]]] = collections.defaultdict(list)
+        for qubit, (row, col) in enumerate(itertools.product(range(self.rows), range(self.cols))):
+            node_data = Node(qubit, is_data=True)
+            edges["nw"].append((node_map[row, col], node_data))
+            edges["ne"].append((node_map[row, (col + 1) % self.cols], node_data))
+            edges["sw"].append((node_map[(row + 1) % self.rows, col], node_data))
+            edges["se"].append((node_map[(row + 1) % self.rows, (col + 1) % self.cols], node_data))
+
+        subgraphs = {key: self.graph.edge_subgraph(edge_group) for key, edge_group in edges.items()}
+        self._syndrome_subgraphs = (
+            subgraphs["nw"],
+            subgraphs["ne"],
+            subgraphs["sw"],
+            subgraphs["se"],
+        )
+        return self._syndrome_subgraphs
 
 
 class GeneralizedSurfaceCode(CSSCode):

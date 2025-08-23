@@ -194,8 +194,8 @@ class EdgeColoring(SyndromeMeasurementStrategy):
             raise ValueError(
                 "The EdgeColoring strategy for syndrome measurement does not work for non-CSS codes"
             )
-        qubit_ids = qubit_ids or QubitIDs.from_code(code)
 
+        qubit_ids = qubit_ids or QubitIDs.from_code(code)
         circuit = stim.Circuit()
         circuit.append("RX", qubit_ids.check)
         circuit += EdgeColoring.graph_to_circuit(code.graph_x, qubit_ids, strategy)
@@ -231,3 +231,58 @@ class EdgeColoring(SyndromeMeasurementStrategy):
             for gate, check_qubit, data_qubit in sorted(gates):
                 circuit.append(gate, [check_qubit, data_qubit])
         return circuit
+
+
+class CardinalEdgeColoring(SyndromeMeasurementStrategy):
+    """Edge coloration syndrome measurement strategy inspired by Algorithm 2 of arXiv:2109.14609.
+
+    For a CSS code with Tanner graph T, Algorithm 2 of arXiv:2109.14609 proceeds as follows:
+    1. Assign each edge in T a cardinal direction D in {E, N, S, W}.
+    2. For each D in (E, N, S, W), consider the subgraph T_D, color the edges of T_D, and apply the
+        corresponding gates one color at a time.
+    This strategy can achieve a lower depth than the EdgeColoring strategy by interleaving many of
+    the X and Z syndrome measurements.
+
+    This syndrome measurement strategy slightly generalizes that in Algorithm 2 of arXiv:2109.14609.
+    Specifically, this strategy delegates the division of the Tanner graph T into subgraphs T_D
+    (i.e., step 1 above) to the error-correcting code, and in step 2 above iterates over each
+    subgraph T_D in code.syndrome_subgraphs.
+
+    WARNING: This strategy is not guaranteed to be distance-preserving or fault-tolerant.
+    """
+
+    @staticmethod
+    @restrict_to_qubits
+    def get_circuit(
+        code: codes.QuditCode, qubit_ids: QubitIDs | None = None, *, strategy: str = "largest_first"
+    ) -> tuple[stim.Circuit, MeasurementRecord]:
+        """Construct a syndrome measurement circuit using Algorithm 2 of arXiv:2109.14609.
+
+        Args:
+            codes.QuditCode: The code whose syndromes we want to measure.
+            circuits.QubitIDs: Integer indices for the data and check (syndrome readout) qubits.
+                Defaults to QubitIDs.from_code(code).
+            strategy: The graph coloration stratepy passed to nx.greedy_color.
+                Defaults to "largest_first".
+
+        Returns:
+            stim.Circuit: A syndrome measurement circuit.
+            circuits.MeasurementRecord: The record of measurements in the circuit.
+        """
+        if code.syndrome_subgraphs is NotImplemented:
+            raise ValueError(
+                "The provided code is not equipped with a syndrome_subgraphs property, as required"
+                " for the CardinalEdgeColoring syndrome measurement strategy"
+            )
+
+        qubit_ids = qubit_ids or QubitIDs.from_code(code)
+        circuit = stim.Circuit()
+        circuit.append("RX", qubit_ids.check)
+        for graph in code.syndrome_subgraphs:
+            circuit += EdgeColoring.graph_to_circuit(graph, qubit_ids, strategy)
+        circuit.append("MX", qubit_ids.check)
+
+        measurement_record = MeasurementRecord(
+            {qubit: [num] for num, qubit in enumerate(qubit_ids.check)}
+        )
+        return circuit, measurement_record
