@@ -34,10 +34,10 @@ from .syndrome_measurement import (
 @restrict_to_qubits
 def get_memory_experiment(
     code: codes.AbstractCode,
-    syndrome_measurement_strategy: SyndromeMeasurementStrategy | None = None,
-    *,
-    num_rounds: int = 1,
     basis: PauliXZ = Pauli.X,
+    num_rounds: int = 1,
+    *,
+    syndrome_measurement_strategy: SyndromeMeasurementStrategy | None = None,
     qubit_ids: QubitIDs | None = None,
     noise_model: NoiseModel | None = None,
 ) -> stim.Circuit:
@@ -68,13 +68,13 @@ def get_memory_experiment(
             that protects only basis-type logical operators.  Otherwise, only CSS stabilizer
             (non-subsystem) qubit codes are supported at the moment (generalization to non-CSS and
             subsystem codes pending).
-        syndrome_measurement_strategy: The syndrome measurement strategy to use, which defines how
-            each round of QEC measures all parity checks of the code.
-            Default: circuits.EdgeColoring().
-        num_rounds: Total number of QEC cycles to perform.  Must be at least 1.  Default: 1.
         basis: Should be Pauli.X or Pauli.Z, depending the desired logical operators to track.  A
             logical error in a noisy simulation of the circuit corresponds to a logical error in one
             of these operators.  Default: Pauli.X.
+        num_rounds: Total number of QEC cycles to perform.  Must be at least 1.  Default: 1.
+        syndrome_measurement_strategy: The syndrome measurement strategy to use, which defines how
+            each round of QEC measures all parity checks of the code.
+            Default: circuits.EdgeColoring().
         qubit_ids: A QubitIDs object specifying the index of data and check qubits.  Defaults to
             labeling qubits by their corresponding column/row of the parity check matrix.
         noise_model: The noise model to apply to the circuit after construction, or None to return a
@@ -94,8 +94,8 @@ def get_memory_experiment(
         noise_model = circuits.DepolarizingNoiseModel(1e-2)
         circuit = circuits.get_memory_experiment(
             rep_code,
-            num_rounds=5,
             basis=Pauli.Z,
+            num_rounds=5,
             noise_model=noise_model,
         )
 
