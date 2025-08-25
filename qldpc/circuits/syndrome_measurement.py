@@ -140,7 +140,7 @@ class EdgeColoring(SyndromeMeasurementStrategy):
         qubit_ids: QubitIDs | None = None,
         *,
         strategy: str = "smallest_last",
-        subgraph_strategy: str | None = None,
+        **subgraph_kwargs: object,
     ) -> tuple[stim.Circuit, MeasurementRecord]:
         """Construct a syndrome measurement circuit.
 
@@ -150,20 +150,19 @@ class EdgeColoring(SyndromeMeasurementStrategy):
                 Defaults to QubitIDs.from_code(code).
             strategy: The graph coloration stratepy passed to nx.greedy_color.
                 Defaults to "smallest_last".
-            subgraph_strategy: If not None (the default), this argument is passed to the subgraph
-                construction method via code.get_syndrome_subgraphs(strategy=subgraph_strategy).
+            subgraph_kwargs: Keyword arguments to pass to code.get_syndrome_subgraphs.
 
         Returns:
             stim.Circuit: A syndrome measurement circuit.
             circuits.MeasurementRecord: The record of measurements in the circuit.
         """
-        subgraph_strategy_kwargs = dict(strategy=subgraph_strategy) if subgraph_strategy else {}
+        subgraphs = code.get_syndrome_subgraphs(**subgraph_kwargs)  # type:ignore[arg-type]
 
         qubit_ids = qubit_ids or QubitIDs.from_code(code)
         circuit = stim.Circuit()
         circuit.append("RX", qubit_ids.check)
-        for graph in code.get_syndrome_subgraphs(**subgraph_strategy_kwargs):
-            circuit += EdgeColoring.graph_to_circuit(graph, qubit_ids, strategy)
+        for subgraph in subgraphs:
+            circuit += EdgeColoring.graph_to_circuit(subgraph, qubit_ids, strategy)
         circuit.append("MX", qubit_ids.check)
 
         measurement_record = MeasurementRecord(
