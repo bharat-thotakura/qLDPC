@@ -120,59 +120,15 @@ class SyndromeMeasurementStrategy(abc.ABC):
         """
 
 
-class SerialExtraction(SyndromeMeasurementStrategy):
-    """Serialize syndrome extraction according to a code's parity check matrix.
-
-    WARNING: This strategy is not guaranteed to be distance-preserving or fault-tolerant.
-    """
-
-    @staticmethod
-    @restrict_to_qubits
-    def get_circuit(
-        code: codes.QuditCode, qubit_ids: QubitIDs | None = None
-    ) -> tuple[stim.Circuit, MeasurementRecord]:
-        """Construct a syndrome measurement circuit using Algorithm 1 of arXiv:2109.14609.
-
-        Args:
-            codes.QuditCode: The code whose syndromes we want to measure.
-            circuits.QubitIDs: Integer indices for the data and check (syndrome readout) qubits.
-                Defaults to QubitIDs.from_code(code).
-
-        Returns:
-            stim.Circuit: A syndrome measurement circuit.
-            circuits.MeasurementRecord: The record of measurements in the circuit.
-        """
-        qubit_ids = qubit_ids or QubitIDs.from_code(code)
-
-        circuit = stim.Circuit()
-        circuit.append("RX", qubit_ids.check)
-
-        # write syndromes to ancilla qubits one at a time
-        for check_qubit, check in enumerate(code.matrix, start=len(code)):
-            for data_qubit, pauli_xz in enumerate(check.reshape(2, len(code)).T):
-                pauli = Pauli(tuple(pauli_xz))
-                if pauli is not Pauli.I:
-                    circuit.append(f"C{pauli}", [check_qubit, data_qubit])
-
-        circuit.append("MX", qubit_ids.check)
-        measurement_record = MeasurementRecord(
-            {qubit: [num] for num, qubit in enumerate(qubit_ids.check)}
-        )
-        return circuit, measurement_record
-
-
 class EdgeColoring(SyndromeMeasurementStrategy):
-    """Edge coloration syndrome measurement strategy inspired by Algorithm 2 of arXiv:2109.14609.
+    """Edge coloration strategy for constructing a syndrome measurement circuit.
 
-    For a CSS code with Tanner graph T, Algorithm 2 of arXiv:2109.14609 proceeds as follows:
-    1. Assign each edge in T a cardinal direction D in {E, N, S, W}.
-    2. For each D in (E, N, S, W), consider the subgraph T_D, color the edges of T_D, and apply the
-        corresponding gates one color at a time.
-
-    The EdgeColoring syndrome measurement strategy here slightly generalizes that in Algorithm 2 of
-    arXiv:2109.14609.  Specifically, this strategy delegates the division of the Tanner graph T into
-    subgraphs T_D (i.e., step 1 above) to the error-correcting code, and in step 2 above iterates
-    over each subgraph T_D in code.syndrome_subgraphs.
+    Every edge of a code's Tanner graph is associated with a two-qubit gate that needs to be applied
+    to "write" parity checks onto ancilla qubits (i.e., for syndrome extraction).  This syndrome
+    measurement strategy iterates over the subgraphs of a code's Tanner graph in the order specified
+    by code.get_syndrome_subgraphs().  For each subgraph, this strategy colors the edges of that
+    subgraph (such that no two vertex-adjacent edges share the same color), and then applies the
+    corresponding gates one color at a time.
 
     WARNING: This strategy is not guaranteed to be distance-preserving or fault-tolerant.
     """
@@ -180,31 +136,33 @@ class EdgeColoring(SyndromeMeasurementStrategy):
     @staticmethod
     @restrict_to_qubits
     def get_circuit(
-        code: codes.QuditCode, qubit_ids: QubitIDs | None = None, *, strategy: str = "largest_first"
+        code: codes.QuditCode,
+        qubit_ids: QubitIDs | None = None,
+        *,
+        strategy: str = "smallest_last",
+        subgraph_strategy: str | None = None,
     ) -> tuple[stim.Circuit, MeasurementRecord]:
-        """Construct a syndrome measurement circuit using Algorithm 2 of arXiv:2109.14609.
+        """Construct a syndrome measurement circuit.
 
         Args:
-            codes.QuditCode: The code whose syndromes we want to measure.
-            circuits.QubitIDs: Integer indices for the data and check (syndrome readout) qubits.
+            code: The code whose syndromes we want to measure.
+            qubit_ids: Integer indices for the data and check (syndrome readout) qubits.
                 Defaults to QubitIDs.from_code(code).
             strategy: The graph coloration stratepy passed to nx.greedy_color.
-                Defaults to "largest_first".
+                Defaults to "smallest_last".
+            subgraph_strategy: If not None (the default), this argument is passed to the subgraph
+                construction method via code.get_syndrome_subgraphs(strategy=subgraph_strategy).
 
         Returns:
             stim.Circuit: A syndrome measurement circuit.
             circuits.MeasurementRecord: The record of measurements in the circuit.
         """
-        if code.syndrome_subgraphs is NotImplemented:
-            raise ValueError(
-                "The provided code is not equipped with a syndrome_subgraphs property, as required"
-                " for the EdgeColoring syndrome measurement strategy"
-            )
+        subgraph_strategy_kwargs = dict(strategy=subgraph_strategy) if subgraph_strategy else {}
 
         qubit_ids = qubit_ids or QubitIDs.from_code(code)
         circuit = stim.Circuit()
         circuit.append("RX", qubit_ids.check)
-        for graph in code.syndrome_subgraphs:
+        for graph in code.get_syndrome_subgraphs(**subgraph_strategy_kwargs):
             circuit += EdgeColoring.graph_to_circuit(graph, qubit_ids, strategy)
         circuit.append("MX", qubit_ids.check)
 
@@ -244,7 +202,7 @@ class EdgeColoringXZ(SyndromeMeasurementStrategy):
 
     For a CSS code with Tanner graph T, this strategy is as follows:
     1. Construct the subgraphs T_X and T_Z of T restricted, respectively, to X and Z stabilizers.
-    2. For each T_P in {T_X, T_Z}, color the edges of T_P, and then apply all corresponding gates
+    2. For each T_P in (T_X, T_Z), color the edges of T_P, and then apply all corresponding gates
         one color at a time.
 
     WARNING: This strategy is not guaranteed to be distance-preserving or fault-tolerant.
@@ -253,7 +211,7 @@ class EdgeColoringXZ(SyndromeMeasurementStrategy):
     @staticmethod
     @restrict_to_qubits
     def get_circuit(
-        code: codes.QuditCode, qubit_ids: QubitIDs | None = None, *, strategy: str = "largest_first"
+        code: codes.QuditCode, qubit_ids: QubitIDs | None = None, *, strategy: str = "smallest_last"
     ) -> tuple[stim.Circuit, MeasurementRecord]:
         """Construct a syndrome measurement circuit using Algorithm 1 of arXiv:2109.14609.
 
@@ -262,7 +220,7 @@ class EdgeColoringXZ(SyndromeMeasurementStrategy):
             circuits.QubitIDs: Integer indices for the data and check (syndrome readout) qubits.
                 Defaults to QubitIDs.from_code(code).
             strategy: The graph coloration stratepy passed to nx.greedy_color.
-                Defaults to "largest_first".
+                Defaults to "smallest_last".
 
         Returns:
             stim.Circuit: A syndrome measurement circuit.

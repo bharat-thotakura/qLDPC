@@ -18,6 +18,7 @@ limitations under the License.
 from __future__ import annotations
 
 import abc
+import collections
 import functools
 import itertools
 import random
@@ -816,10 +817,37 @@ class QuditCode(AbstractCode):
         field = getattr(graph, "field", galois.GF(DEFAULT_FIELD_ORDER))
         return field(matrix.reshape(num_checks, 2 * num_qudits))
 
-    @property
-    def syndrome_subgraphs(self) -> tuple[nx.DiGraph, ...]:
-        """Sequence of subgraphs of the Tanner graph that induces a syndrome extraction sequence."""
-        return NotImplemented  # pragma: no cover
+    def get_syndrome_subgraphs(self, *, strategy: str = "smallest_last") -> tuple[nx.DiGraph, ...]:
+        """Sequence of subgraphs of the Tanner graph that induces a syndrome extraction sequence.
+
+        Every edge of the Tanner graph is associated with a two-qubit gate that needs to be applied
+        to "write" parity checks onto ancilla qubits (i.e., for syndrome extraction).  The sequence
+        of subgraphs returned by this method induces a (possibly partial) ordering on these gates,
+        which is used by qldpc.circuits.EdgeColoring to construct a syndrome measurement circuit.
+
+        Subclasses of QuditCode can override this method to define a code-specific syndrome
+        measurement sequence, so long as the following requirements are satisfied:
+        1. Any pair of subgraphs must be edge-disjoint.
+        2. The union of all subgraphs (with nx.compose) must equal the Tanner graph of the code.
+        3. For every subgraph, all two-qubit gates associated with its edges must commute.
+
+        The sequence here colors parity checks in such a way that any two parity checks with
+        overlapping support have different colors.  Each color induces a subgraph of all edges
+        incident to that color.  These subgraphs are returned in arbitrary order.
+        """
+        # build a graph whose vertices are checks, and edges connect checks with overlapping support
+        check_graph = nx.Graph()
+        for qubit in range(len(self)):
+            data_node = Node(qubit, is_data=True)
+            check_nodes = self.graph.predecessors(data_node)
+            check_graph.add_edges_from(itertools.combinations(check_nodes, 2))
+        coloring = nx.coloring.greedy_color(check_graph, strategy)
+
+        # collect all edges incident to each color, and return the corresponding subgraphs
+        color_to_edges: dict[int, nx.DiGraph] = collections.defaultdict(list)
+        for check_node, color in coloring.items():
+            color_to_edges[color].extend(self.graph.edges(check_node))
+        return tuple(self.graph.edge_subgraph(edges) for edges in color_to_edges.values())
 
     def get_strings(self) -> list[str]:
         """Parity checks checks of this code, represented by strings."""
@@ -1815,9 +1843,15 @@ class CSSCode(QuditCode):
         assert pauli in PAULIS_XZ
         return self.graph_x if pauli is Pauli.X else self.graph_z
 
-    @property
-    def syndrome_subgraphs(self) -> tuple[nx.DiGraph, ...]:
-        """Sequence of subgraphs of the Tanner graph that induces a syndrome extraction sequence."""
+    def get_syndrome_subgraphs(self, *, strategy: str = "smallest_last") -> tuple[nx.DiGraph, ...]:
+        """Sequence of subgraphs of the Tanner graph that induces a syndrome extraction sequence.
+
+        The sequence here enforces that X-type stabilizers are read out before Z-type stabilizers.
+        See help(qldpc.codes.QuditCode.get_syndrome_subgraphs) for additional information.
+
+        The 'strategy' argument to this method is ignored.  It is only inculded for compatibility
+        with QuditCode.get_syndrome_subgraphs.
+        """
         return self.graph_x, self.graph_z
 
     @property

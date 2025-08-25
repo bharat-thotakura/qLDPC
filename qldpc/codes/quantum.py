@@ -751,21 +751,23 @@ class HGPCode(CSSCode):
             logical_ops_xz = HGPCode.get_canonical_logical_ops(self.code_a, self.code_b)
             self.set_logical_ops_xz(*logical_ops_xz, validate=False)
 
-    @functools.cached_property
-    def syndrome_subgraphs(self, strategy: str = "smallest_last") -> tuple[nx.DiGraph, ...]:
+    def get_syndrome_subgraphs(self, *, strategy: str = "smallest_last") -> tuple[nx.DiGraph, ...]:
         """Sequence of subgraphs of the Tanner graph that induces a syndrome extraction sequence.
 
-        The sequence here is essentially that for hypergraph product codes in arXiv:2109.14609,
-        modified to obviate the need to find a balanced ordering of Tanner graph vertices.
+        See help(qldpc.codes.QuditCode.get_syndrome_subgraphs) for additional information.
+
+        The sequence here is essentially the sequence used for hypergraph product codes in Algorithm
+        2 of arXiv:2109.14609, modified to obviate the need to find a balanced ordering of Tanner
+        graph vertices.
 
         More specifically, this method constructs Tanner subgraphs as follows:
         1. For the classical seed code that defines vertical edges of this HGPCode (self.code_a),
-            color the edges of its Tanner graph, and number these colors starting at zero.
+            color the edges of its Tanner graph, and number these colors starting from zero.
         2. Even edges get assigned a "north" or "south" direction if they are associated,
             respectively, with X-type or Z-type parity checks.  Odd edges get assigned the opposite
             direction.
-        3. Steps 1 and 2 are repeated for the horizontal code (self.code_b), with (north, south)
-            replaced by (east, west).
+        3. Steps 1 and 2 are repeated for (horizontal, self.code_b, east, west) in place of
+            (vertical, self.code_a, north, south).
         """
         node_map = HGPCode.get_product_node_map(self.code_a.graph.nodes, self.code_b.graph.nodes)
 
@@ -1409,8 +1411,6 @@ class SurfaceCode(CSSCode):
     - https://errorcorrectionzoo.org/c/rotated_surface
     """
 
-    _syndrome_subgraphs: tuple[nx.DiGraph, ...] | None = None
-
     def __init__(
         self,
         rows: int,
@@ -1434,13 +1434,12 @@ class SurfaceCode(CSSCode):
             # "original" surface code
             code_a = RepetitionCode(rows, field)
             code_b = RepetitionCode(cols, field)
-            code_ab = HGPCode(code_a, code_b, field)
-            matrix_x = code_ab.matrix_x.view(np.ndarray)
-            matrix_z = code_ab.matrix_z.view(np.ndarray)
-            self._default_conjugate: list[int] | slice = slice(code_ab.sector_size[0, 0], None)
-
-            # save cardinality data about check/data qubit connections
-            self._syndrome_subgraphs = code_ab.syndrome_subgraphs
+            self.parent_code = HGPCode(code_a, code_b)
+            matrix_x = self.parent_code.matrix_x.view(np.ndarray)
+            matrix_z = self.parent_code.matrix_z.view(np.ndarray)
+            self._default_conjugate: list[int] | slice = slice(
+                self.parent_code.sector_size[0, 0], None
+            )
 
         else:
             # rotated surface code
@@ -1523,17 +1522,22 @@ class SurfaceCode(CSSCode):
 
         return np.array(checks_x), np.array(checks_z)
 
-    @property
-    def syndrome_subgraphs(self) -> tuple[nx.DiGraph, ...]:
+    def get_syndrome_subgraphs(self, *, strategy: str = "smallest_last") -> tuple[nx.DiGraph, ...]:
         """Sequence of subgraphs of the Tanner graph that induces a syndrome extraction sequence.
 
-        If this is an unrotated surface code, return the syndrome subgraphs of the parent HGPCode.
-        Otherwise, return the subgraphs of (NW, NE, SW, SE)-facing edges of the Tanner graph.
-        """
-        if self._syndrome_subgraphs is not None:
-            return self._syndrome_subgraphs
+        See help(qldpc.codes.QuditCode.get_syndrome_subgraphs) for additional information.
 
-        assert self.rotated
+        If this is an unrotated surface code, return the syndrome subgraphs of the parent HGPCode.
+        Otherwise, organize edges of the Tanner graph by an orientation in {NW, NE, SW, SE}, and by
+        whether they are used for the readout of X-type or Z-type syndromes.  Interleave these edges
+        in such a way as to minimize circuit depth and avoid hook errors.
+
+        Args:
+            strategy: The edge coloring strategy used to construct syndrome subgraphs of a parent
+                HGPCode.  Only used if self.rotated is False.  Default: "smallest_last".
+        """
+        if not self.rotated:
+            return self.parent_code.get_syndrome_subgraphs(strategy=strategy)
 
         def get_check_pauli(row: int, col: int) -> PauliXZ:
             """What type of stabilizer does this check measure?"""
@@ -1589,17 +1593,16 @@ class SurfaceCode(CSSCode):
 
         # return subgraphs in the order that minimizes hook errors
         subgraphs = {key: self.graph.edge_subgraph(edge_group) for key, edge_group in edges.items()}
-        self._syndrome_subgraphs = (
+        return (
             subgraphs[Pauli.X, "nw"],
             subgraphs[Pauli.Z, "nw"],
             subgraphs[Pauli.X, "sw"],
-            subgraphs[Pauli.X, "ne"],
             subgraphs[Pauli.Z, "ne"],
+            subgraphs[Pauli.X, "ne"],
             subgraphs[Pauli.Z, "sw"],
             subgraphs[Pauli.X, "se"],
             subgraphs[Pauli.Z, "se"],
         )
-        return self._syndrome_subgraphs
 
 
 class ToricCode(CSSCode):
@@ -1610,8 +1613,6 @@ class ToricCode(CSSCode):
     - https://errorcorrectionzoo.org/c/surface
     - https://errorcorrectionzoo.org/c/rotated_surface
     """
-
-    _syndrome_subgraphs: tuple[nx.DiGraph, ...] | None = None
 
     def __init__(
         self,
@@ -1635,13 +1636,12 @@ class ToricCode(CSSCode):
             # "original" toric code
             code_a = RingCode(rows, field)
             code_b = RingCode(cols, field)
-            code_ab = HGPCode(code_a, code_b, field)
-            matrix_x = code_ab.matrix_x.view(np.ndarray)
-            matrix_z = code_ab.matrix_z.view(np.ndarray)
-            self._default_conjugate: list[int] | slice = slice(code_ab.sector_size[0, 0], None)
-
-            # save cardinality data about check/data qubit connections
-            self._syndrome_subgraphs = code_ab.syndrome_subgraphs
+            self.parent_code = HGPCode(code_a, code_b)
+            matrix_x = self.parent_code.matrix_x.view(np.ndarray)
+            matrix_z = self.parent_code.matrix_z.view(np.ndarray)
+            self._default_conjugate: list[int] | slice = slice(
+                self.parent_code.sector_size[0, 0], None
+            )
 
         else:
             # rotated toric code
@@ -1707,17 +1707,18 @@ class ToricCode(CSSCode):
 
         return np.array(checks_x), np.array(checks_z)
 
-    @property
-    def syndrome_subgraphs(self) -> tuple[nx.DiGraph, ...]:
+    def get_syndrome_subgraphs(self, *, strategy: str = "smallest_last") -> tuple[nx.DiGraph, ...]:
         """Sequence of subgraphs of the Tanner graph that induces a syndrome extraction sequence.
 
-        If this is an unrotated surface code, return the syndrome subgraphs of the parent HGPCode.
-        Otherwise, return the subgraphs of (NW, NE, SW, SE)-facing edges of the Tanner graph.
-        """
-        if self._syndrome_subgraphs is not None:
-            return self._syndrome_subgraphs
+        If this is an unrotated toric code, return the syndrome subgraphs of the parent HGPCode.
+        Otherwise, return the subgraphs of edges oriented along (NW, NE, SW, SE) directions.
 
-        assert self.rotated
+        Args:
+            strategy: The edge coloring strategy used to construct syndrome subgraphs of a parent
+                HGPCode.  Only used if self.rotated is False.  Default: "smallest_last".
+        """
+        if not self.rotated:
+            return self.parent_code.get_syndrome_subgraphs(strategy=strategy)
 
         def get_check_pauli(row: int, col: int) -> PauliXZ:
             """What type of stabilizer does this check measure?"""
@@ -1743,13 +1744,7 @@ class ToricCode(CSSCode):
             edges["se"].append((node_map[(row + 1) % self.rows, (col + 1) % self.cols], node_data))
 
         subgraphs = {key: self.graph.edge_subgraph(edge_group) for key, edge_group in edges.items()}
-        self._syndrome_subgraphs = (
-            subgraphs["nw"],
-            subgraphs["ne"],
-            subgraphs["sw"],
-            subgraphs["se"],
-        )
-        return self._syndrome_subgraphs
+        return subgraphs["nw"], subgraphs["ne"], subgraphs["sw"], subgraphs["se"]
 
 
 class GeneralizedSurfaceCode(CSSCode):
