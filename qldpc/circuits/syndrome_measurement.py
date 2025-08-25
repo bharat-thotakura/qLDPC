@@ -127,7 +127,7 @@ class EdgeColoring(SyndromeMeasurementStrategy):
     to "write" parity checks onto ancilla qubits (i.e., for syndrome extraction).  This syndrome
     measurement strategy iterates over the subgraphs of a code's Tanner graph in the order specified
     by code.get_syndrome_subgraphs().  For each subgraph, this strategy colors the edges of that
-    subgraph (such that no two vertex-adjacent edges share the same color), and then applies the
+    subgraph such that no pair of vertex-adjacent edges share the same color, and then applies the
     corresponding gates one color at a time.
 
     WARNING: This strategy is not guaranteed to be distance-preserving or fault-tolerant.
