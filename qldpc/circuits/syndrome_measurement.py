@@ -178,7 +178,7 @@ class EdgeColoring(SyndromeMeasurementStrategy):
         Assumes that check qubits are initialized |+>.
         """
         # color the edges of the Tanner graph
-        coloring = nx.coloring.greedy_color(nx.line_graph(graph.to_undirected()), strategy)
+        coloring = nx.greedy_color(nx.line_graph(graph.to_undirected()), strategy)
 
         # collect operations by color, in (gate, qubit_1, qubit_2) format
         color_to_ops: dict[int, list[tuple[str, int, int]]] = collections.defaultdict(list)

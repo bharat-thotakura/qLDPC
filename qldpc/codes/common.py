@@ -834,6 +834,10 @@ class QuditCode(AbstractCode):
         The sequence here colors parity checks in such a way that any two parity checks with
         overlapping support have different colors.  Each color induces a subgraph of all edges
         incident to that color.  These subgraphs are returned in arbitrary order.
+
+        Args:
+            strategy: The strategy used by nx.greedy_color to color parity checks.
+                Default: "smallest_last".
         """
         # build a graph whose vertices are checks, and edges connect checks with overlapping support
         check_graph = nx.Graph()
@@ -841,7 +845,7 @@ class QuditCode(AbstractCode):
             data_node = Node(qubit, is_data=True)
             check_nodes = self.graph.predecessors(data_node)
             check_graph.add_edges_from(itertools.combinations(check_nodes, 2))
-        coloring = nx.coloring.greedy_color(check_graph, strategy)
+        coloring = nx.greedy_color(check_graph, strategy)
 
         # collect all edges incident to each color, and return the corresponding subgraphs
         color_to_edges: dict[int, nx.DiGraph] = collections.defaultdict(list)

@@ -768,15 +768,17 @@ class HGPCode(CSSCode):
             direction.
         3. Steps 1 and 2 are repeated for (horizontal, self.code_b, east, west) in place of
             (vertical, self.code_a, north, south).
+
+        Args:
+            strategy: The strategy used by nx.greedy_color to color edges of the Tanner graph.
+                Default: "smallest_last".
         """
         node_map = HGPCode.get_product_node_map(self.code_a.graph.nodes, self.code_b.graph.nodes)
 
         # collect subgraphs of North and South edges
         edges_n: dict[int, list[tuple[Node, Node]]] = collections.defaultdict(list)
         edges_s: dict[int, list[tuple[Node, Node]]] = collections.defaultdict(list)
-        coloring_a = nx.coloring.greedy_color(
-            nx.line_graph(self.code_a.graph.to_undirected()), strategy
-        )
+        coloring_a = nx.greedy_color(nx.line_graph(self.code_a.graph.to_undirected()), strategy)
         for (check_a, data_a), color in coloring_a.items():
             for node_b in self.code_b.graph.nodes:
                 node_0 = node_map[check_a, node_b]
@@ -790,9 +792,7 @@ class HGPCode(CSSCode):
         # collect subgraphs of East and West edges
         edges_e: dict[int, list[tuple[Node, Node]]] = collections.defaultdict(list)
         edges_w: dict[int, list[tuple[Node, Node]]] = collections.defaultdict(list)
-        coloring_b = nx.coloring.greedy_color(
-            nx.line_graph(self.code_b.graph.to_undirected()), strategy
-        )
+        coloring_b = nx.greedy_color(nx.line_graph(self.code_b.graph.to_undirected()), strategy)
         for (check_b, data_b), color in coloring_b.items():
             for node_a in self.code_a.graph.nodes:
                 node_0 = node_map[node_a, check_b]
@@ -1533,8 +1533,9 @@ class SurfaceCode(CSSCode):
         in such a way as to minimize circuit depth and avoid hook errors.
 
         Args:
-            strategy: The edge coloring strategy used to construct syndrome subgraphs of a parent
-                HGPCode.  Only used if self.rotated is False.  Default: "smallest_last".
+            strategy: Only used if self.rotated is False, in which case this argument is passed to
+                HGPCode.get_syndrome_subgraphs to color the edges of the Tanner graph of this code.
+                Default: "smallest_last".
         """
         if not self.rotated:
             return self.parent_code.get_syndrome_subgraphs(strategy=strategy)
@@ -1714,8 +1715,9 @@ class ToricCode(CSSCode):
         Otherwise, return the subgraphs of edges oriented along (NW, NE, SW, SE) directions.
 
         Args:
-            strategy: The edge coloring strategy used to construct syndrome subgraphs of a parent
-                HGPCode.  Only used if self.rotated is False.  Default: "smallest_last".
+            strategy: Only used if self.rotated is False, in which case this argument is passed to
+                HGPCode.get_syndrome_subgraphs to color the edges of the Tanner graph of this code.
+                Default: "smallest_last".
         """
         if not self.rotated:
             return self.parent_code.get_syndrome_subgraphs(strategy=strategy)
