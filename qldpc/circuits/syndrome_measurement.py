@@ -173,9 +173,15 @@ class EdgeColoring(SyndromeMeasurementStrategy):
 
     @staticmethod
     def graph_to_circuit(graph: nx.DiGraph, qubit_ids: QubitIDs, strategy: str) -> stim.Circuit:
-        """Convert a Tanner graph into a syndrome extraction circuit.
+        """Convert a Tanner (sub)graph into a syndrome extraction circuit.
 
-        Assumes that check qubits are initialized |+>.
+        Edges of the graph correspond to two-qubit controlled-pauli (i.e., CX, CY, or CZ) gates.
+        This method colors all edges to identify subsets of qubit-disjoint gates, and then applies
+        the corresponding gates one color at a time.
+
+        Assumptions:
+        - All two-qubit gates associated with edges in the graph commute.
+        - Check qubits are initialized |+>.
         """
         # color the edges of the Tanner graph
         coloring = nx.greedy_color(nx.line_graph(graph.to_undirected()), strategy)
