@@ -3,7 +3,7 @@
 This library contains tools for constructing and analyzing [quantum low density parity check (qLDPC) codes](https://errorcorrectionzoo.org/c/qldpc).  At least, that was the original motivation for this library.  In practice, the tools here work just as well for error-correcting stabilizer and subsystem codes more broadly.
 
 In a nutshell, `qLDPC` provides supports a variety of built-in codes and custom codes constructed from parity check matrices that represent stabilizer or gauge group generators.  Once a code is constructed, `qLDPC` automates various tasks of common interest, and integrates with external tools for analyzing error-correcting codes (including [`QDistRnd`](https://docs.gap-system.org/pkg/qdistrnd/doc/chap1_mj.html), [`ldpc`](https://github.com/quantumgizmos/ldpc), [`stim`](https://github.com/quantumlib/Stim), and [`sinter`](https://pypi.org/project/sinter), among others).  Automated tasks include:
-- constructing a canonical basis logical Pauli operators,
+- constructing a canonical basis of logical Pauli operators,
 - computing (or upper-bounding) code distance,
 - computing logical error rates in a code-capacity model,
 - constructing various circuits of interest, such as a quantum memory experiment for obtaining circuit-level logical error rates,
