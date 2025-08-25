@@ -1061,6 +1061,31 @@ class LPCode(CSSCode):
     orthogonal matrices over F_q, in which case the RingArray is interpreted as a block matrix; this
     is called "lifting" the RingArray.
 
+    As an example, the lift-connected surface code in Eq. (2) of https://arxiv.org/pdf/2401.02911v2
+    can be constructed by
+
+        import numpy as np
+        from qldpc.abstract import CyclicGroup, GroupRing, RingArray, RingMember
+        from qldpc.codes import RepetitionCode, LPCode
+
+        num_copies = 5  # the number of surface codes to stitch together
+        group = CyclicGroup(num_copies)
+        ring = GroupRing(group)
+        x = RingMember(ring, group.generators[0])  # generator of the cyclic group
+
+        # stitch together small surface codes by hand
+        rep_matrix = RingArray.build([[1, 1, 0, 0], [0, 1, 1, 0], [0, 0, 1, 1]], ring)
+        int_matrix = RingArray.build([[0, x, 0, 0], [0, 0, x, 0], [0, 0, 0, x]], ring)
+        code = LPCode(rep_matrix + int_matrix)
+
+        # stitch together larger surface codes
+        dist = 10  # distance of the individual surface codes
+        rep_matrix = RingArray.build(RepetitionCode(dist).matrix, ring)
+        int_matrix = RingArray.build(np.zeros((dist - 1, dist), dtype=int), ring)
+        for row in range(len(int_matrix)):
+            int_matrix[row, row + 1] = x
+        code = LPCode(rep_matrix + int_matrix)
+
     Notes:
     - A lifted product code with RingArrays of size 1×1 is a two-block code (more specifically, a
         two-block group-algebra code).  If the base group of the RingArrays is a cyclic group, the
@@ -1122,10 +1147,10 @@ class SLPCode(CSSCode):
 
         group = CyclicGroup(2)
         ring = GroupRing(group)
-        x = RingMember(ring, group.generators[0])
-        matrix = RingArray([[ring.one, x, x], [x, x, ring.one]])  # Eq. 21 of arXiv:2404.18302v1
+        x = group.generators[0]
+        matrix = RingArray.build([[1, x, x], [x, x, 1]], ring)  # Eq. 21 of arXiv:2404.18302v1
         code = SLPCode(matrix)
-        assert code.get_code_parameters() == (18, 4, 2)
+        assert code.get_code_params() == (18, 4, 2)
 
     while the SLPCode in example 2 is
 
@@ -1134,7 +1159,7 @@ class SLPCode(CSSCode):
         x = RingMember(ring, group.generators[0])
         matrix = RingArray([[ring.one + x + x**2, ring.one + x, x]])  # Eq. 23 of arXiv:2404.18302v1
         code = SLPCode(matrix)
-        assert code.get_code_parameters() == (27, 12, 2)
+        assert code.get_code_params() == (27, 12, 2)
 
     References:
     - https://errorcorrectionzoo.org/c/subsystem_lifted_product
