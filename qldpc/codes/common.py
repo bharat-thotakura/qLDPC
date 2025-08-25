@@ -1847,7 +1847,7 @@ class CSSCode(QuditCode):
         assert pauli in PAULIS_XZ
         return self.graph_x if pauli is Pauli.X else self.graph_z
 
-    def get_syndrome_subgraphs(self, *, strategy: str = "smallest_last") -> tuple[nx.DiGraph, ...]:
+    def get_syndrome_subgraphs(self, *, strategy: str = "") -> tuple[nx.DiGraph, ...]:
         """Sequence of subgraphs of the Tanner graph that induces a syndrome extraction sequence.
 
         The sequence here enforces that X-type stabilizers are read out before Z-type stabilizers.
