@@ -91,22 +91,22 @@ PauliXZ = Literal[Pauli.X, Pauli.Z]
 PAULIS_XZ: list[PauliXZ] = [Pauli.X, Pauli.Z]
 
 
-class QuditOperator:
+class QuditPauli:
     """A qudit operator of the form X(val_x)*Z(val_z)."""
 
     def __init__(self, value: tuple[int, int] = (0, 0)) -> None:
         self.value = value
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, QuditOperator) and self.value == other.value
+        return isinstance(other, QuditPauli) and self.value == other.value
 
-    def __invert__(self) -> QuditOperator:
+    def __invert__(self) -> QuditPauli:
         """Fourier-transform this qudit operator."""
-        return QuditOperator(self.value[::-1])
+        return QuditPauli(self.value[::-1])
 
-    def __neg__(self) -> QuditOperator:
+    def __neg__(self) -> QuditPauli:
         """Invert the shifts and phases on this qudit operator."""
-        return QuditOperator((-self.value[0], -self.value[1]))
+        return QuditPauli((-self.value[0], -self.value[1]))
 
     def __str__(self) -> str:
         val_x, val_z = self.value
@@ -122,10 +122,10 @@ class QuditOperator:
         return "*".join(ops)
 
     @staticmethod
-    def from_string(string: str) -> QuditOperator:
+    def from_string(string: str) -> QuditPauli:
         """Build a qudit operator from its string representation."""
         if string == "I":
-            return QuditOperator((0, 0))
+            return QuditPauli((0, 0))
 
         invalid_op = f"Invalid qudit operator: {string}"
 
@@ -149,7 +149,7 @@ class QuditOperator:
             else:  # pauli == "Y"
                 val_x = val_z = val
 
-        return QuditOperator((val_x, val_z))
+        return QuditPauli((val_x, val_z))
 
 
 @dataclasses.dataclass

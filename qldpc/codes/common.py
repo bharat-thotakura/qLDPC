@@ -36,7 +36,7 @@ import stim
 from qldpc import abstract, decoders, external
 from qldpc.abstract import DEFAULT_FIELD_ORDER
 from qldpc.math import first_nonzero_cols, log_choose, op_to_string, symplectic_conjugate
-from qldpc.objects import PAULIS_XZ, Node, Pauli, PauliXZ, QuditOperator
+from qldpc.objects import PAULIS_XZ, Node, Pauli, PauliXZ, QuditPauli
 
 from .distance import get_distance_classical, get_distance_quantum
 
@@ -283,8 +283,7 @@ class ClassicalCode(AbstractCode):
             node_c = Node(index=int(row), is_data=False)
             node_d = Node(index=int(col), is_data=True)
             graph.add_edge(node_c, node_d, val=matrix[row][col])
-        if isinstance(matrix, galois.FieldArray):
-            graph.order = type(matrix).order
+        graph.field = galois.GF(getattr(type(matrix), "order", DEFAULT_FIELD_ORDER))
         return graph
 
     @staticmethod
@@ -292,8 +291,8 @@ class ClassicalCode(AbstractCode):
         """Convert a Tanner graph into a parity check matrix."""
         num_bits = sum(node.is_data for node in graph.nodes())
         num_checks = len(graph.nodes()) - num_bits
-        field = getattr(graph, "order", DEFAULT_FIELD_ORDER)
-        matrix = galois.GF(field).Zeros((num_checks, num_bits))
+        field = getattr(graph, "field", galois.GF(DEFAULT_FIELD_ORDER))
+        matrix = field.Zeros((num_checks, num_bits))
         for node_c, node_b, data in graph.edges(data=True):
             matrix[node_c.index, node_b.index] = data.get("val", 1)
         return matrix
@@ -724,7 +723,7 @@ class QuditCode(AbstractCode):
     - https://errorcorrectionzoo.org/c/galois_into_galois
     - https://errorcorrectionzoo.org/c/galois_stabilizer
     - https://errorcorrectionzoo.org/c/oecc
-    Helpful lecture by Gottesman: https://www.youtube.com/watch?v=JWg4zrNAF-g
+    - https://www.youtube.com/watch?v=JWg4zrNAF-g
     """
 
     _stabilizer_ops: galois.FieldArray | None = None
@@ -790,24 +789,19 @@ class QuditCode(AbstractCode):
     def matrix_to_graph(matrix: npt.NDArray[np.int_] | Sequence[Sequence[int]]) -> nx.DiGraph:
         """Convert a parity check matrix into a Tanner graph."""
         graph = nx.DiGraph()
+        graph.field = galois.GF(getattr(type(matrix), "order", DEFAULT_FIELD_ORDER))
+        _Pauli = Pauli if graph.field.order == 2 else QuditPauli
+
         matrix = np.reshape(matrix, (len(matrix), 2, -1))
         for row, xz, col in zip(*np.nonzero(matrix)):
             node_check = Node(index=int(row), is_data=False)
             node_qudit = Node(index=int(col), is_data=True)
             graph.add_edge(node_check, node_qudit)
 
-            qudit_op = graph[node_check][node_qudit].get(QuditOperator, QuditOperator())
+            qudit_op = graph[node_check][node_qudit].get(Pauli, _Pauli((0, 0)))
             vals_xz = list(qudit_op.value)
             vals_xz[xz] += int(matrix[row, xz, col])
-            graph[node_check][node_qudit][QuditOperator] = QuditOperator(tuple(vals_xz))
-
-        # remember order of the field, and use Pauli operators if appropriate
-        if isinstance(matrix, galois.FieldArray):
-            graph.order = type(matrix).order
-            if graph.order == 2:
-                for _, __, data in graph.edges(data=True):
-                    data[Pauli] = Pauli(data[QuditOperator].value)
-                    del data[QuditOperator]
+            graph[node_check][node_qudit][Pauli] = _Pauli(tuple(vals_xz))
 
         return graph
 
@@ -818,10 +812,9 @@ class QuditCode(AbstractCode):
         num_checks = len(graph.nodes()) - num_qudits
         matrix = np.zeros((num_checks, 2, num_qudits), dtype=int)
         for node_check, node_qudit, data in graph.edges(data=True):
-            op = data.get(QuditOperator) or data.get(Pauli)
-            matrix[node_check.index, :, node_qudit.index] = op.value
-        field = getattr(graph, "order", DEFAULT_FIELD_ORDER)
-        return galois.GF(field)(matrix.reshape(num_checks, 2 * num_qudits))
+            matrix[node_check.index, :, node_qudit.index] = data.get(Pauli).value
+        field = getattr(graph, "field", galois.GF(DEFAULT_FIELD_ORDER))
+        return field(matrix.reshape(num_checks, 2 * num_qudits))
 
     @property
     def syndrome_subgraphs(self) -> tuple[nx.DiGraph, ...]:
@@ -830,6 +823,8 @@ class QuditCode(AbstractCode):
 
     def get_strings(self) -> list[str]:
         """Parity checks checks of this code, represented by strings."""
+        _Pauli = Pauli if self.field.order == 2 else QuditPauli
+
         matrix = self.matrix.reshape(self.num_checks, 2, self.num_qudits)
         checks = []
         for check in range(self.num_checks):
@@ -838,10 +833,7 @@ class QuditCode(AbstractCode):
                 val_x = matrix[check, Pauli.X, qudit]
                 val_z = matrix[check, Pauli.Z, qudit]
                 vals_xz = (val_x, val_z)
-                if self.field.order == 2:
-                    ops.append(str(Pauli(vals_xz)))
-                else:
-                    ops.append(str(QuditOperator(vals_xz)))
+                ops.append(str(_Pauli(vals_xz)))
             checks.append(" ".join(ops))
         return checks
 
@@ -852,7 +844,7 @@ class QuditCode(AbstractCode):
         check_ops = [check.split() for check in checks]
         num_checks = len(check_ops)
         num_qudits = len(check_ops[0])
-        operator: type[Pauli] | type[QuditOperator] = Pauli if field == 2 else QuditOperator
+        operator: type[Pauli] | type[QuditPauli] = Pauli if field == 2 else QuditPauli
 
         matrix = np.zeros((num_checks, 2, num_qudits), dtype=int)
         for index, check_op in enumerate(check_ops):

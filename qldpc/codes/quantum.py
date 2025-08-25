@@ -35,7 +35,7 @@ import sympy
 from qldpc import abstract
 from qldpc.abstract import DEFAULT_FIELD_ORDER
 from qldpc.math import first_nonzero_cols
-from qldpc.objects import CayleyComplex, ChainComplex, Node, Pauli, PauliXZ, QuditOperator
+from qldpc.objects import CayleyComplex, ChainComplex, Node, Pauli, PauliXZ, QuditPauli
 
 from .classical import HammingCode, RepetitionCode, RingCode, SimplexCode, TannerCode
 from .common import ClassicalCode, CSSCode, QuditCode
@@ -823,12 +823,14 @@ class HGPCode(CSSCode):
     @staticmethod
     def get_graph_product(graph_a: nx.DiGraph, graph_b: nx.DiGraph) -> nx.DiGraph:
         """Hypergraph product of two Tanner graphs."""
+        graph = nx.DiGraph()
+        field = getattr(graph_a, "field", galois.GF(DEFAULT_FIELD_ORDER))
+        _Pauli = Pauli if field.order == 2 else QuditPauli
 
         # start with a cartesian products of the input graphs
         graph_product = nx.cartesian_product(graph_a, graph_b)
 
-        # fix edge orientation, and tag each edge with a QuditOperator
-        graph = nx.DiGraph()
+        # fix edge orientation, and tag each edge with a QuditPauli
         for node_fst, node_snd, data in graph_product.edges(data=True):
             # identify the sectors of two nodes
             sector_fst = HGPCode.get_sector(*node_fst)
@@ -843,31 +845,23 @@ class HGPCode(CSSCode):
                 node_qudit, sector_qudit = node_snd, sector_snd
 
             # start with an X-type operator
-            op = QuditOperator((data.get("val", 0), 0))
+            op = _Pauli((data.get("val", 0), 0))
 
             # switch to Z-type operator for check qudits in the (0, 1) sector
             if sector_check == (0, 1):
                 op = ~op
 
             # account for the minus sign in the (0, 0) sector of the Z-type subcode
-            if op.value[Pauli.Z] and sector_qudit == (0, 0):
+            if isinstance(op, QuditPauli) and sector_qudit == (0, 0) and op.value[Pauli.Z]:
                 op = -op
 
             graph.add_edge(node_check, node_qudit)
-            graph[node_check][node_qudit][QuditOperator] = op
+            graph[node_check][node_qudit][Pauli] = op
 
         # relabel nodes, from (node_a, node_b) --> node_combined
         node_map = HGPCode.get_product_node_map(graph_a.nodes, graph_b.nodes)
         graph = nx.relabel_nodes(graph, node_map)
-
-        # remember order of the field, and use Pauli operators if appropriate
-        if hasattr(graph_a, "order"):
-            graph.order = graph_a.order
-            if graph.order == 2:
-                for _, __, data in graph.edges(data=True):
-                    data[Pauli] = Pauli(data[QuditOperator].value)
-                    del data[QuditOperator]
-
+        graph.field = field
         return graph
 
     @staticmethod

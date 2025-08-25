@@ -49,14 +49,14 @@ def test_pauli() -> None:
 
 def test_qudit_operator() -> None:
     """Qudit operator capabilities."""
-    assert objects.QuditOperator((0, 0)) == objects.QuditOperator()
-    assert objects.QuditOperator((0, 1)) == ~objects.QuditOperator((1, 0))
-    assert -objects.QuditOperator((0, 1)) == objects.QuditOperator((0, -1))
+    assert objects.QuditPauli((0, 0)) == objects.QuditPauli()
+    assert objects.QuditPauli((0, 1)) == ~objects.QuditPauli((1, 0))
+    assert -objects.QuditPauli((0, 1)) == objects.QuditPauli((0, -1))
     for op in ["I", "Y(1)", "X(1)*Z(2)"]:
-        assert str(objects.QuditOperator.from_string(op)) == op
+        assert str(objects.QuditPauli.from_string(op)) == op
     for op in ["a*b*c", "a(1)"]:
         with pytest.raises(ValueError, match="Invalid qudit operator"):
-            objects.QuditOperator.from_string(op)
+            objects.QuditPauli.from_string(op)
 
 
 def test_node() -> None:
