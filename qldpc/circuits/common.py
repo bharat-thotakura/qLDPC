@@ -209,12 +209,12 @@ def get_logical_tableau(
     *,
     deform_code: bool = False,
 ) -> stim.Tableau:
-    """Identify the logical tableau implemented by the physical circuit.
+    """Identify the logical tableau implemented by the physical circuit or tableau.
 
-    If deform_code is True, then the physical_circuit is required to have two effects, namely
+    If deform_code is True, then the physical circuit is required to have two effects, namely
     (a) transforming a logical state of the QuditCode by a corresponding logical Clifford gate, and
     (b) changing the code that encodes the logical state to
-        code.deform(physical_circuit, preserve_logicals=True)
+        code.deformed(physical_circuit, preserve_logicals=True)
     """
     physical_circuit = (
         physical_circuit_or_tableau
