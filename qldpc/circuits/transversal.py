@@ -90,7 +90,7 @@ def get_transversal_automorphism_group(
 
     Uses the methods of https://arxiv.org/abs/2409.18175.
     """
-    local_gates = _standardize_local_gates(local_gates)
+    local_gates = _validate_local_gates(local_gates)
     allow_swaps = "SWAP" in local_gates
     local_gates.discard("SWAP")
 
@@ -334,8 +334,8 @@ def _get_transversal_automorphism_data(
     return logical_tableau, physical_circuit
 
 
-def _standardize_local_gates(local_gates: Collection[str]) -> set[str]:
-    """Standardize a local Clifford gate set."""
+def _validate_local_gates(local_gates: Collection[str]) -> set[str]:
+    """Verify that the provided collection of local gates is supported."""
     allowed_gates = {"S", "H", "SQRT_X", "SWAP"}
     if not allowed_gates.issuperset(local_gates):
         raise ValueError(
@@ -362,7 +362,7 @@ def _get_pauli_permutation_circuit(
     local_gates: Collection[str],
 ) -> stim.Circuit:
     """Construct the circuit of local Pauli permutations applied by a transversal automorphism."""
-    local_gates = _standardize_local_gates(local_gates)
+    local_gates = _validate_local_gates(local_gates)
     local_gates.discard("SWAP")
 
     circuit = stim.Circuit()
