@@ -215,9 +215,10 @@ class QCCode(TBCode):
     orders: tuple[int, ...]
 
     symbols: tuple[sympy.Symbol, ...]
+    symbol_gens: dict[sympy.Symbol, abstract.GroupMember]
+
     group: abstract.AbelianGroup
     ring: abstract.GroupRing
-    symbol_gens: dict[sympy.Symbol, abstract.GroupMember]
 
     def __init__(
         self,
