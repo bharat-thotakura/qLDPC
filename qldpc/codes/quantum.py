@@ -213,8 +213,8 @@ class QCCode(TBCode):
     poly_a: sympy.Poly
     poly_b: sympy.Poly
     orders: tuple[int, ...]
-    symbols: tuple[sympy.Symbol, ...]
 
+    symbols: tuple[sympy.Symbol, ...]
     group: abstract.AbelianGroup
     ring: abstract.GroupRing
     symbol_gens: dict[sympy.Symbol, abstract.GroupMember]
