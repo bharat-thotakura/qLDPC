@@ -210,6 +210,15 @@ class QCCode(TBCode):
     Bivariate quasi-cyclic codes are bivariate bicycle codes; see BBCode class.
     """
 
+    poly_a: sympy.Poly
+    poly_b: sympy.Poly
+    orders: tuple[int, ...]
+    symbols: tuple[sympy.Symbol, ...]
+
+    group: abstract.AbelianGroup
+    ring: abstract.GroupRing
+    symbol_gens: dict[sympy.Symbol, abstract.GroupMember]
+
     def __init__(
         self,
         orders: Sequence[int] | dict[sympy.Symbol, int],
@@ -385,6 +394,9 @@ class BBCode(QCCode):
     - https://arxiv.org/abs/2404.18809
     """
 
+    orders: tuple[int, int]
+    symbols: tuple[sympy.Symbol, sympy.Symbol]
+
     def __init__(
         self,
         orders: Sequence[int] | dict[sympy.Symbol, int],
@@ -393,17 +405,13 @@ class BBCode(QCCode):
         field: int | None = None,
     ) -> None:
         """Construct a bivariate bicycle code."""
-        self.poly_a = sympy.Poly(poly_a)
-        self.poly_b = sympy.Poly(poly_b)
-        symbols = poly_a.free_symbols | poly_b.free_symbols
+        symbols = sympy.Poly(poly_a).free_symbols | sympy.Poly(poly_b).free_symbols
         if len(orders) != 2 or len(symbols) != 2:
             raise ValueError(
                 "BBCodes should have exactly two cyclic group orders and two symbols, not "
                 f"{len(orders)} orders and {len(symbols)} symbols."
             )
         QCCode.__init__(self, orders, poly_a, poly_b, field)
-        self.orders: tuple[int, int]
-        self.symbols: tuple[sympy.Symbol, sympy.Symbol]
 
     def __str__(self) -> str:
         """Human-readable representation of this code."""
