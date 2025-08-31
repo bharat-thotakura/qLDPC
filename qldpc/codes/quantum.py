@@ -43,15 +43,21 @@ from .common import ClassicalCode, CSSCode, QuditCode
 
 
 class FiveQuditCode(QuditCode):
-    """Smallest quantum error-correcting code."""
+    """Smallest quantum error-correcting code.
+
+    Generalizes the better-known FiveQubitCode.
+
+    References:
+    - https://errorcorrectionzoo.org/c/galois_5_1_3
+    """
 
     def __init__(self, field: int | None = None) -> None:
         code_field = galois.GF(field or DEFAULT_FIELD_ORDER)
         matrix = [
-            [1, 0, 0, 1, 0, 0, -1, -1, 0, 0],
-            [0, 1, 0, 0, 1, 0, 0, -1, -1, 0],
-            [1, 0, 1, 0, 0, 0, 0, 0, -1, -1],
-            [0, 1, 0, 1, 0, -1, 0, 0, 0, -1],
+            [1, 0, 0, -1, 0, 0, 1, -1, 0, 0],
+            [0, 1, 0, 0, -1, 0, 0, 1, -1, 0],
+            [-1, 0, 1, 0, 0, 0, 0, 0, 1, -1],
+            [0, -1, 0, 1, 0, -1, 0, 0, 0, 1],
         ]
         QuditCode.__init__(
             self,
@@ -63,7 +69,11 @@ class FiveQuditCode(QuditCode):
 
 
 class FiveQubitCode(FiveQuditCode):
-    """Smallest quantum error-correcting code."""
+    """Smallest quantum error-correcting code.
+
+    References:
+    - https://errorcorrectionzoo.org/c/stab_5_1_3
+    """
 
     def __init__(self) -> None:
         super().__init__(field=2)
