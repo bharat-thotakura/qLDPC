@@ -216,8 +216,7 @@ class QCCode(TBCode):
     with subcode parity check matrices
     - matrix_x = [A, B], and
     - matrix_z = [B.T, -A.T].
-    Here A and B are polynomials of the form A = sum_{i,j,k,...} A_{ijk...} x^i y^j z^k ...,
-    where
+    Here A and B are polynomials of the form A = sum_{i,j,k,...} A_{ijk...} x^i y^j z^k ..., where
     - A_{ijk...} is a scalar coefficient (over some finite field),
     - x, y, z, ... are generators of cyclic groups of orders R_x, R_y, R_z, ...
     - the monomial x^i y^j z^k ... represents a tensor product of cyclic shift matrices.
