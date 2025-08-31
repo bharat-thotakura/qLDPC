@@ -161,8 +161,8 @@ class C6Code(CSSCode):
         self._distance_x = self._distance_z = 2
 
 
-################################################################################
-# two-block and bicycle codes
+####################################################################################################
+# two-block and quasi-cyclic codes
 
 
 class TBCode(CSSCode):
@@ -744,8 +744,8 @@ class BBCode(QCCode):
         return bool(np.all(reached))
 
 
-################################################################################
-# hypergraph and lifted product codes
+####################################################################################################
+# hypergraph product code, lifted product code, and their subsystem variants
 
 
 class HGPCode(CSSCode):
@@ -1291,7 +1291,7 @@ class SLPCode(CSSCode):
         CSSCode.__init__(self, matrix_x.lift(), matrix_z.lift(), field, is_subsystem_code=True)
 
 
-################################################################################
+####################################################################################################
 # quantum Tanner code
 
 
@@ -1525,8 +1525,8 @@ class QTCode(CSSCode):
         return QTCode(subset_a, subset_b, code_a, code_b, bipartite=bipartite)
 
 
-################################################################################
-# common quantum codes
+####################################################################################################
+# surface code and friends
 
 
 class SurfaceCode(CSSCode):
@@ -1919,6 +1919,10 @@ class GeneralizedSurfaceCode(CSSCode):
         assert not isinstance(matrix_x, abstract.RingArray)
         assert not isinstance(matrix_z, abstract.RingArray)
         CSSCode.__init__(self, matrix_x, matrix_z, field)
+
+
+####################################################################################################
+# miscellaneous codes
 
 
 class BaconShorCode(SHPCode):

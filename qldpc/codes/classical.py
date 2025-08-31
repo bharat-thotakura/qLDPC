@@ -181,6 +181,69 @@ class ReedMullerCode(ClassicalCode):
             )
 
 
+class SimplexCode(ClassicalCode):
+    """Classical simplex code.
+
+    A binary simplex code with dimension k has code parameters [2**k - 1, k, 2 ** (k - 1)].
+    The automorphism of this code is the general linear group GL(k, 2).
+
+    References:
+    - https://errorcorrectionzoo.org/c/simplex
+    - https://arxiv.org/abs/2502.07150
+    """
+
+    def __init__(self, dim: int, field: int | None = None) -> None:
+        field = field or DEFAULT_FIELD_ORDER
+        polynomial = SimplexCode.get_defining_polynomial(dim, field)
+        coefficients = polynomial.coefficients(size=field**dim - 1, order="asc")
+        matrix = np.array([np.roll(coefficients, jj) for jj in range(len(coefficients))])
+        ClassicalCode.__init__(self, matrix, field=field)
+
+        self._dimension = dim
+        self._distance = field ** (dim - 1) * (field - 1)
+
+    @staticmethod
+    def get_defining_polynomial(dim: int, field: int | None = None) -> galois.Poly:
+        """The polynomial that defines a SimplexCode of a given dimension and base field.
+
+        Returns a three-term polynomial of the form h(x) = 1 + a * x**c + b * x**d, where
+        - the coefficients a and b are elements of a finite field,
+        - the exponents c and d are integers, and
+        - gcd(h(x), x ** (field**dim - 1) - 1) is a primitive polynomial of degree dim.
+        """
+        field = field or DEFAULT_FIELD_ORDER
+
+        # first try finding a primitive three-term polynomial of degree dim
+        try:
+            primitive_polys = galois.primitive_polys(order=field, degree=dim, terms=3)
+            return next(primitive_polys)
+        except StopIteration:
+            None
+
+        # find a suitable polynomial by brute force
+
+        order = field**dim - 1
+        mod_poly_coefficients = [0] * (order + 1)
+        mod_poly_coefficients[0] = -1
+        mod_poly_coefficients[-1] = 1
+        mod_poly = galois.Poly(mod_poly_coefficients, field=galois.GF(field))
+
+        for aa, bb in itertools.product(range(1, field), repeat=2):
+            for cc, dd in itertools.combinations(range(1, order + 1), 2):
+                coefficients = [0] * (order + 1)
+                coefficients[0] = 1
+                coefficients[cc] = aa
+                coefficients[dd] = bb
+                poly = galois.Poly(coefficients[::-1], field=galois.GF(field))
+                gcd_poly = galois.gcd(poly, mod_poly)
+                if gcd_poly.degree == dim and gcd_poly.is_primitive():
+                    return poly
+
+        raise ValueError(
+            "Suitable primitive polynomial not found.  This should not be possible."
+        )  # pragma: no cover
+
+
 class TannerCode(ClassicalCode):
     """Classical Tanner code, as described in DOI:10.1109/TIT.1981.1056404.
 
@@ -250,66 +313,3 @@ class TannerCode(ClassicalCode):
                 directed_subgraph[node_a][edge]["sort"] = sort_data[node_a]
                 directed_subgraph[node_b][edge]["sort"] = sort_data[node_b]
         return directed_subgraph
-
-
-class SimplexCode(ClassicalCode):
-    """Classical simplex code.
-
-    A binary simplex code with dimension k has code parameters [2**k - 1, k, 2 ** (k - 1)].
-    The automorphism of this code is the general linear group GL(k, 2).
-
-    References:
-    - https://errorcorrectionzoo.org/c/simplex
-    - https://arxiv.org/abs/2502.07150
-    """
-
-    def __init__(self, dim: int, field: int | None = None) -> None:
-        field = field or DEFAULT_FIELD_ORDER
-        polynomial = SimplexCode.get_defining_polynomial(dim, field)
-        coefficients = polynomial.coefficients(size=field**dim - 1, order="asc")
-        matrix = np.array([np.roll(coefficients, jj) for jj in range(len(coefficients))])
-        ClassicalCode.__init__(self, matrix, field=field)
-
-        self._dimension = dim
-        self._distance = field ** (dim - 1) * (field - 1)
-
-    @staticmethod
-    def get_defining_polynomial(dim: int, field: int | None = None) -> galois.Poly:
-        """The polynomial that defines a SimplexCode of a given dimension and base field.
-
-        Returns a three-term polynomial of the form h(x) = 1 + a * x**c + b * x**d, where
-        - the coefficients a and b are elements of a finite field,
-        - the exponents c and d are integers, and
-        - gcd(h(x), x ** (field**dim - 1) - 1) is a primitive polynomial of degree dim.
-        """
-        field = field or DEFAULT_FIELD_ORDER
-
-        # first try finding a primitive three-term polynomial of degree dim
-        try:
-            primitive_polys = galois.primitive_polys(order=field, degree=dim, terms=3)
-            return next(primitive_polys)
-        except StopIteration:
-            None
-
-        # find a suitable polynomial by brute force
-
-        order = field**dim - 1
-        mod_poly_coefficients = [0] * (order + 1)
-        mod_poly_coefficients[0] = -1
-        mod_poly_coefficients[-1] = 1
-        mod_poly = galois.Poly(mod_poly_coefficients, field=galois.GF(field))
-
-        for aa, bb in itertools.product(range(1, field), repeat=2):
-            for cc, dd in itertools.combinations(range(1, order + 1), 2):
-                coefficients = [0] * (order + 1)
-                coefficients[0] = 1
-                coefficients[cc] = aa
-                coefficients[dd] = bb
-                poly = galois.Poly(coefficients[::-1], field=galois.GF(field))
-                gcd_poly = galois.gcd(poly, mod_poly)
-                if gcd_poly.degree == dim and gcd_poly.is_primitive():
-                    return poly
-
-        raise ValueError(
-            "Suitable primitive polynomial not found.  This should not be possible."
-        )  # pragma: no cover
