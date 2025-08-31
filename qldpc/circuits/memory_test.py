@@ -23,15 +23,13 @@ from qldpc.objects import Pauli
 
 def test_memory_experiment() -> None:
     """Stim circuits for memory experiments."""
-    # try out a classical error correcting code
     num_rounds, shots = 5, 10
-    rep_code = codes.RepetitionCode(3)
     noise_model = circuits.DepolarizingNoiseModel(1e-2)
+
+    # try out a classical error correcting code
+    rep_code = codes.RepetitionCode(3)
     circuit = circuits.get_memory_experiment(
-        rep_code,
-        num_rounds=num_rounds,
-        basis=Pauli.Z,
-        noise_model=noise_model,
+        rep_code, basis=Pauli.Z, num_rounds=num_rounds, noise_model=noise_model
     )
     sampler = circuit.compile_detector_sampler()
     detectors, observables = sampler.sample(shots=shots, separate_observables=True)
