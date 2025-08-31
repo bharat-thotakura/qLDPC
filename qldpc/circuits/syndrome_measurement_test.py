@@ -20,6 +20,7 @@ import random
 import numpy as np
 import pytest
 import stim
+import sympy
 
 from qldpc import circuits, codes
 from qldpc.math import symplectic_conjugate
@@ -42,6 +43,24 @@ def test_syndrome_measurement(pytestconfig: pytest.Config) -> None:
     code_a = codes.ClassicalCode.random(5, 3, seed=seed)
     code_b = codes.ClassicalCode.random(3, 2, seed=seed + 1)
     assert_valid_syndome_measurement(codes.HGPCode(code_a, code_b, field=2))
+
+    # special strategy for QCCodes
+    np.random.seed(seed)
+    symbols = [sympy.Symbol(f"x_{ss}") for ss in range(3)]
+    orders = [np.random.randint(2, 6) for _ in range(len(symbols))]
+    term_indices_a = np.random.choice(range(np.prod(orders)), replace=False, size=4)
+    term_indices_b = np.random.choice(range(np.prod(orders)), replace=False, size=3)
+    term_exponents_a = [np.unravel_index(index, orders) for index in term_indices_a]
+    term_exponents_b = [np.unravel_index(index, orders) for index in term_indices_b]
+    poly_a = sum(
+        np.prod([symbol**exponent for symbol, exponent in zip(symbols, exponents_a)])
+        for exponents_a in term_exponents_a
+    )
+    poly_b = sum(
+        np.prod([symbol**exponent for symbol, exponent in zip(symbols, exponents_b)])
+        for exponents_b in term_exponents_b
+    )
+    assert_valid_syndome_measurement(codes.QCCode(orders, poly_a, poly_b, field=2))
 
     # EdgeColoringXZ strategy
     assert_valid_syndome_measurement(codes.SteaneCode(), circuits.EdgeColoringXZ())
