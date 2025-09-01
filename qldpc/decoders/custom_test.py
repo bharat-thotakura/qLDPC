@@ -131,28 +131,6 @@ def test_augmented_decoders() -> None:
     assert np.array_equal(composite_errors, composite_decoder.decode_batch(composite_syndromes))
 
 
-# def test_direct_decoding() -> None:
-#     """Decode directly from a corrupted code word."""
-#     matrix, error, syndrome = get_toy_problem()
-
-#     code_word = np.zeros_like(error)
-#     corrupted_code_word = (code_word + error) % 2
-#     decoder = decoders.ILPDecoder(matrix)
-#     direct_decoder = decoders.DirectDecoder.from_indirect(decoder, matrix)
-#     assert np.array_equal(code_word, direct_decoder.decode(corrupted_code_word))
-
-#     # try again over the trinary field
-#     field = galois.GF(3)
-#     matrix = -matrix.view(field)
-#     error = -error.view(field)
-#     code_word = code_word.view(field)
-
-#     corrupted_code_word = code_word + error.view(field)
-#     decoder = decoders.ILPDecoder(matrix)
-#     direct_decoder = decoders.DirectDecoder.from_indirect(decoder, matrix.view(field))
-#     assert np.array_equal(code_word, direct_decoder.decode(corrupted_code_word))
-
-
 def test_quantum_decoding(pytestconfig: pytest.Config) -> None:
     """Decode an actual quantum code with random errors."""
     np.random.seed(pytestconfig.getoption("randomly_seed"))
