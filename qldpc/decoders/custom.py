@@ -428,7 +428,10 @@ class CompositeDecoder(Decoder):
             for ss in range(len(syndrome_lengths))
         )
 
-        if all(hasattr(decoder, "decode_batch") for decoder in self.decoders):
+        self.decode_batch_implemented = all(
+            hasattr(decoder, "decode_batch") for decoder in self.decoders
+        )
+        if self.decode_batch_implemented:
             self.decode_batch = self._decode_batch
 
     @staticmethod
@@ -438,18 +441,22 @@ class CompositeDecoder(Decoder):
 
     def decode(self, syndrome: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
         """Decode an error syndrome by parts."""
-        corrections = [
-            decoder.decode(syndrome[slice]) for decoder, slice in zip(self.decoders, self.slices)
-        ]
-        return np.hstack(corrections)
+        return np.hstack(
+            [decoder.decode(syndrome[slice]) for decoder, slice in zip(self.decoders, self.slices)]
+        )
 
     def _decode_batch(self, syndromes: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
         """Decode a batch of error syndromes by parts."""
-        corrections = [
-            decoder.decode_batch(syndromes[:, slice])
-            for decoder, slice in zip(self.decoders, self.slices)
-        ]
-        return np.hstack(corrections)
+        return (
+            np.hstack(
+                [
+                    decoder.decode_batch(syndromes[:, slice])
+                    for decoder, slice in zip(self.decoders, self.slices)
+                ]
+            )
+            if self.decode_batch_implemented
+            else NotImplemented
+        )
 
 
 class DirectDecoder(Decoder):
