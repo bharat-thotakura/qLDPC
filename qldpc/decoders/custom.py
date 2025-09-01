@@ -28,6 +28,7 @@ import numpy as np
 import numpy.typing as npt
 
 from qldpc import codes
+from qldpc.abstract import DEFAULT_FIELD_ORDER
 from qldpc.math import IntegerArray, symplectic_conjugate, symplectic_weight
 from qldpc.objects import Node
 
@@ -464,30 +465,49 @@ class DirectDecoder(Decoder):
     candidate word.
     """
 
-    def __init__(self, decode_func: Callable[[npt.NDArray[np.int_]], npt.NDArray[np.int_]]) -> None:
+    def __init__(
+        self,
+        decode_func: Callable[[npt.NDArray[np.int_]], npt.NDArray[np.int_]],
+        decode_batch_func: Callable[[npt.NDArray[np.int_]], npt.NDArray[np.int_]] | None = None,
+    ) -> None:
         self.decode_func = decode_func
+        self.decode_batch_func = decode_batch_func
+        if decode_batch_func is not None:
+            self.decode_batch = self._decode_batch
 
     def decode(self, word: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
-        """Decode a corrupted code word and return an inferred code word."""
+        """Decode a corrupted code word and return a corrected code word."""
         return self.decode_func(word)
+
+    def _decode_batch(self, words: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
+        """Decode a batch of corrupted code words and return a batch of corrected code words."""
+        return (
+            self.decode_batch_func(words) if self.decode_batch_func is not None else NotImplemented
+        )
 
     @staticmethod
     def from_indirect(decoder: Decoder, matrix: IntegerArray) -> DirectDecoder:
         """Instantiate a DirectDecoder from an indirect decoder and a parity check matrix."""
-        field = type(matrix) if isinstance(matrix, galois.FieldArray) else None
+        field = (
+            type(matrix)
+            if isinstance(matrix, galois.FieldArray)
+            else galois.GF(DEFAULT_FIELD_ORDER)
+        )
+        field_matrix = matrix.view(field)
 
-        if field is None:
+        def decode_func(candidate_word: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
+            candidate_word = candidate_word.view(field)
+            syndrome = field_matrix @ candidate_word
+            error = decoder.decode(syndrome.view(np.ndarray)).view(field)
+            return (candidate_word - error).view(np.ndarray)
 
-            def decode_func(candidate_word: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
-                syndrome = matrix @ candidate_word % 2
-                return (candidate_word - decoder.decode(syndrome)) % 2
+        if not hasattr(decoder, "decode_batch"):
+            return DirectDecoder(decode_func)  # pragma: no cover
 
-        else:
+        def decode_batch_func(candidate_words: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
+            candidate_words = candidate_words.view(field)
+            syndromes = candidate_words @ field_matrix.T
+            errors = decoder.decode_batch(syndromes.view(np.ndarray)).view(field)
+            return (candidate_words - errors).view(np.ndarray)
 
-            def decode_func(candidate_word: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
-                candidate_word = candidate_word.view(field)
-                syndrome = matrix @ candidate_word
-                error = decoder.decode(syndrome.view(np.ndarray)).view(field)
-                return (candidate_word - error).view(np.ndarray)
-
-        return DirectDecoder(decode_func)
+        return DirectDecoder(decode_func, decode_batch_func)

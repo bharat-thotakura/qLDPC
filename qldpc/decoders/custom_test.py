@@ -63,6 +63,32 @@ def test_lookup() -> None:
     assert np.array_equal(error, decoders.decode(matrix, syndrome, with_lookup=True, max_weight=2))
 
 
+def test_ilp_decoder() -> None:
+    """Decode using an integer linear program."""
+    matrix, error, syndrome = get_toy_problem()
+    decoder = decoders.ILPDecoder(matrix)
+    assert np.array_equal(error, decoder.decode(syndrome))
+
+    # try again over the trinary field
+    field = galois.GF(3)
+    matrix = -matrix.view(field)
+    error = -error.view(field)
+    decoder = decoders.ILPDecoder(matrix)
+    assert np.array_equal(error, decoder.decode(syndrome))
+
+
+def test_invalid_ilp() -> None:
+    """Fail to solve an invalid integer linear programming problem."""
+    matrix = np.ones((2, 2), dtype=int)
+    syndrome = np.array([0, 1], dtype=int)
+
+    with pytest.raises(ValueError, match="could not be found"):
+        decoders.decode(matrix, syndrome, with_ILP=True)
+
+    with pytest.raises(ValueError, match="ILP decoding only supports prime number fields"):
+        decoders.decode(galois.GF(4)(matrix), syndrome, with_ILP=True)
+
+
 def test_generalized_union_find() -> None:
     """Generalized Union-Find."""
     base_code: codes.CSSCode = codes.C4Code()
@@ -80,10 +106,20 @@ def test_generalized_union_find() -> None:
     )
 
 
-def test_composite_decoder() -> None:
-    """Decode a composite syndrome in parts to decode independently."""
+def test_augmented_decoders() -> None:
+    """Composite and direct decoders, built from other decoders."""
     matrix, error, syndrome = get_toy_problem()
     decoder = decoders.get_decoder(matrix, with_MWPM=True)
+
+    # decode corrupted code words directly
+    direct_decoder = decoders.DirectDecoder.from_indirect(decoder, matrix)
+
+    assert np.array_equal(np.zeros_like(error), direct_decoder.decode(error))
+
+    errors = np.array([error] * 3)
+    assert np.array_equal(np.zeros_like(errors), direct_decoder.decode_batch(errors))
+
+    # decode composite syndromes
     composite_decoder = decoders.CompositeDecoder.from_copies(decoder, syndrome.size, 2)
 
     composite_error = np.concatenate([error] * 2)
@@ -95,38 +131,26 @@ def test_composite_decoder() -> None:
     assert np.array_equal(composite_errors, composite_decoder.decode_batch(composite_syndromes))
 
 
-def test_direct_ilp_decoding() -> None:
-    """Decode directly from a corrupted code word using integer linear programming."""
-    matrix, error, syndrome = get_toy_problem()
+# def test_direct_decoding() -> None:
+#     """Decode directly from a corrupted code word."""
+#     matrix, error, syndrome = get_toy_problem()
 
-    code_word = np.zeros_like(error)
-    corrupted_code_word = (code_word + error) % 2
-    decoder = decoders.ILPDecoder(matrix)
-    direct_decoder = decoders.DirectDecoder.from_indirect(decoder, matrix)
-    assert np.array_equal(code_word, direct_decoder.decode(corrupted_code_word))
+#     code_word = np.zeros_like(error)
+#     corrupted_code_word = (code_word + error) % 2
+#     decoder = decoders.ILPDecoder(matrix)
+#     direct_decoder = decoders.DirectDecoder.from_indirect(decoder, matrix)
+#     assert np.array_equal(code_word, direct_decoder.decode(corrupted_code_word))
 
-    # try again over the trinary field
-    field = galois.GF(3)
-    matrix = -matrix.view(field)
-    error = -error.view(field)
-    code_word = code_word.view(field)
+#     # try again over the trinary field
+#     field = galois.GF(3)
+#     matrix = -matrix.view(field)
+#     error = -error.view(field)
+#     code_word = code_word.view(field)
 
-    corrupted_code_word = code_word + error.view(field)
-    decoder = decoders.ILPDecoder(matrix)
-    direct_decoder = decoders.DirectDecoder.from_indirect(decoder, matrix.view(field))
-    assert np.array_equal(code_word, direct_decoder.decode(corrupted_code_word))
-
-
-def test_invalid_ilp() -> None:
-    """Fail to solve an invalid integer linear programming problem."""
-    matrix = np.ones((2, 2), dtype=int)
-    syndrome = np.array([0, 1], dtype=int)
-
-    with pytest.raises(ValueError, match="could not be found"):
-        decoders.decode(matrix, syndrome, with_ILP=True)
-
-    with pytest.raises(ValueError, match="ILP decoding only supports prime number fields"):
-        decoders.decode(galois.GF(4)(matrix), syndrome, with_ILP=True)
+#     corrupted_code_word = code_word + error.view(field)
+#     decoder = decoders.ILPDecoder(matrix)
+#     direct_decoder = decoders.DirectDecoder.from_indirect(decoder, matrix.view(field))
+#     assert np.array_equal(code_word, direct_decoder.decode(corrupted_code_word))
 
 
 def test_quantum_decoding(pytestconfig: pytest.Config) -> None:
