@@ -501,13 +501,14 @@ class DirectDecoder(Decoder):
             error = decoder.decode(syndrome.view(np.ndarray)).view(field)
             return (candidate_word - error).view(np.ndarray)
 
-        if not hasattr(decoder, "decode_batch"):
-            return DirectDecoder(decode_func)  # pragma: no cover
+        decode_batch_func: Callable[[npt.NDArray[np.int_]], npt.NDArray[np.int_]] | None = None
 
-        def decode_batch_func(candidate_words: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
-            candidate_words = candidate_words.view(field)
-            syndromes = candidate_words @ field_matrix.T
-            errors = decoder.decode_batch(syndromes.view(np.ndarray)).view(field)
-            return (candidate_words - errors).view(np.ndarray)
+        if hasattr(decoder, "decode_batch"):
+
+            def decode_batch_func(candidate_words: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
+                candidate_words = candidate_words.view(field)
+                syndromes = candidate_words @ field_matrix.T
+                errors = decoder.decode_batch(syndromes.view(np.ndarray)).view(field)
+                return (candidate_words - errors).view(np.ndarray)
 
         return DirectDecoder(decode_func, decode_batch_func)
