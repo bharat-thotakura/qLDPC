@@ -839,6 +839,7 @@ class QuditCode(AbstractCode):
         1. Any pair of subgraphs must be edge-disjoint.
         2. The union of all subgraphs (with nx.compose) must equal the Tanner graph of the code.
         3. For every subgraph, all two-qubit gates associated with its edges must commute.
+        4. The sequence of subgraphs must correspond to a valid syndrome extraction circuit.
 
         The sequence here colors parity checks in such a way that any two parity checks with
         overlapping support have different colors.  Each color induces a subgraph of all edges
