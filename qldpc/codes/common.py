@@ -227,7 +227,7 @@ class ClassicalCode(AbstractCode):
         field: int | None = None,
     ) -> None:
         """Construct a classical code from a parity check matrix over a finite field."""
-        AbstractCode.__init__(self, matrix, field)
+        super().__init__(matrix, field)
 
         if isinstance(matrix, ClassicalCode):
             self._generator = matrix._generator
@@ -749,7 +749,7 @@ class QuditCode(AbstractCode):
         is_subsystem_code: bool | None = None,
     ) -> None:
         """Construct a qudit code from a parity check matrix over a finite field."""
-        AbstractCode.__init__(self, matrix, field)
+        super().__init__(matrix, field)
 
         if isinstance(matrix, QuditCode):
             self._stabilizer_ops = matrix._stabilizer_ops

@@ -88,7 +88,7 @@ class QuantumHammingCode(CSSCode):
 
     def __init__(self, rank: int, field: int | None = None) -> None:
         code = HammingCode(rank, field)
-        CSSCode.__init__(self, code, code, is_subsystem_code=False)
+        super().__init__(code, code, is_subsystem_code=False)
         self._distance_x = self._distance_z = 3
 
 
@@ -102,7 +102,7 @@ class SteaneCode(QuantumHammingCode):
     """
 
     def __init__(self) -> None:
-        QuantumHammingCode.__init__(self, rank=3)
+        super().__init__(rank=3)
         self.set_logical_ops_xz([[1] * 7], [[1] * 7], validate=False)
 
 
@@ -120,7 +120,7 @@ class IcebergCode(CSSCode):
 
     def __init__(self, size: int, *, alternative_logicals: bool = False) -> None:
         checks = [[1] * (2 * size)]
-        CSSCode.__init__(self, checks, checks, is_subsystem_code=False)
+        super().__init__(checks, checks, is_subsystem_code=False)
         self._dimension = 2 * size - 2
         self._distance_x = self._distance_z = 2
 
@@ -142,7 +142,7 @@ class C4Code(IcebergCode):
     """
 
     def __init__(self) -> None:
-        IcebergCode.__init__(self, 2)
+        super().__init__(2)
 
 
 class C6Code(CSSCode):
@@ -154,7 +154,7 @@ class C6Code(CSSCode):
 
     def __init__(self) -> None:
         checks = [[1, 1, 0, 0, 1, 1], [0, 1, 1, 1, 1, 0]]
-        CSSCode.__init__(self, checks, checks, is_subsystem_code=False)
+        super().__init__(checks, checks, is_subsystem_code=False)
         logical_ops_xz = scipy.linalg.block_diag([1, 1, 1], [1, 1, 1])
         self.set_logical_ops_xz(logical_ops_xz, logical_ops_xz)
         self._dimension = 2
@@ -198,8 +198,7 @@ class TBCode(CSSCode):
 
         matrix_x = np.block([matrix_a, matrix_b])
         matrix_z = np.block([matrix_b.T, -matrix_a.T])
-        CSSCode.__init__(
-            self,
+        super().__init__(
             matrix_x,
             matrix_z,
             field,
@@ -508,7 +507,7 @@ class BBCode(QCCode):
                 "BBCodes should have exactly two cyclic group orders and two symbols, not "
                 f"{len(orders)} orders and {len(symbols)} symbols."
             )
-        QCCode.__init__(self, orders, poly_a, poly_b, field)
+        super().__init__(orders, poly_a, poly_b, field)
 
     def __str__(self) -> str:
         """Human-readable representation of this code."""
@@ -844,8 +843,7 @@ class HGPCode(CSSCode):
         # if Hadamard-transforming qudits, conjugate those in the (1, 1) sector by default
         self._default_conjugate = slice(self.sector_size[0, 0], None)
 
-        CSSCode.__init__(
-            self,
+        super().__init__(
             matrix_x.view(np.ndarray).astype(int),
             matrix_z.view(np.ndarray).astype(int),
             field,
@@ -1096,8 +1094,7 @@ class SHPCode(CSSCode):
         code_field = self.code_a.field
 
         matrix_x, matrix_z = SHPCode.get_matrix_product(self.code_a.matrix, self.code_b.matrix)
-        CSSCode.__init__(
-            self,
+        super().__init__(
             matrix_x.view(np.ndarray).astype(int),
             matrix_z.view(np.ndarray).astype(int),
             code_field.order,
@@ -1234,7 +1231,7 @@ class LPCode(CSSCode):
         # if Hadamard-transforming qudits, conjugate those in the (1, 1) sector by default
         self._default_conjugate = slice(self.sector_size[0, 0], None)
 
-        CSSCode.__init__(self, matrix_x.lift(), matrix_z.lift(), field, is_subsystem_code=False)
+        super().__init__(matrix_x.lift(), matrix_z.lift(), field, is_subsystem_code=False)
 
 
 class SLPCode(CSSCode):
@@ -1288,7 +1285,7 @@ class SLPCode(CSSCode):
         assert isinstance(matrix_x, abstract.RingArray)
         assert isinstance(matrix_z, abstract.RingArray)
 
-        CSSCode.__init__(self, matrix_x.lift(), matrix_z.lift(), field, is_subsystem_code=True)
+        super().__init__(matrix_x.lift(), matrix_z.lift(), field, is_subsystem_code=True)
 
 
 ####################################################################################################
@@ -1361,7 +1358,7 @@ class QTCode(CSSCode):
         self.code_b = code_b
         self.complex = CayleyComplex(subset_a, subset_b, bipartite=bipartite)
         code_x, code_z = self.get_subcodes(self.complex, code_a, code_b)
-        CSSCode.__init__(self, code_x, code_z, field, is_subsystem_code=False)
+        super().__init__(code_x, code_z, field, is_subsystem_code=False)
 
     def __eq__(self, other: object) -> bool:
         return (
@@ -1586,9 +1583,7 @@ class SurfaceCode(CSSCode):
                 matrix_z = matrix_z.view(code_field)
                 matrix_z[:, self._default_conjugate] *= -1
 
-        CSSCode.__init__(
-            self, matrix_x, matrix_z, field=field, promise_equal_distance_xz=rows == cols
-        )
+        super().__init__(matrix_x, matrix_z, field=field, promise_equal_distance_xz=rows == cols)
 
     @staticmethod
     def get_rotated_checks(
@@ -1801,9 +1796,7 @@ class ToricCode(CSSCode):
                 matrix_x = matrix_x[:-1]
                 matrix_z = matrix_z[:-1]
 
-        CSSCode.__init__(
-            self, matrix_x, matrix_z, field=field, promise_equal_distance_xz=rows == cols
-        )
+        super().__init__(matrix_x, matrix_z, field=field, promise_equal_distance_xz=rows == cols)
 
     @staticmethod
     def get_rotated_checks(
@@ -1918,7 +1911,7 @@ class GeneralizedSurfaceCode(CSSCode):
         matrix_x, matrix_z = chain.op(1), chain.op(2).T
         assert not isinstance(matrix_x, abstract.RingArray)
         assert not isinstance(matrix_z, abstract.RingArray)
-        CSSCode.__init__(self, matrix_x, matrix_z, field)
+        super().__init__(matrix_x, matrix_z, field)
 
 
 ####################################################################################################
@@ -1942,7 +1935,7 @@ class BaconShorCode(SHPCode):
     ) -> None:
         code_x = RepetitionCode(rows, field)
         code_z = RepetitionCode(cols, field) if cols is not None else None
-        SHPCode.__init__(self, code_x, code_z, field, set_logicals=set_logicals)
+        super().__init__(code_x, code_z, field, set_logicals=set_logicals)
 
         self._distance_x = cols
         self._distance_z = rows
@@ -1973,6 +1966,6 @@ class SHYPSCode(SHPCode):
 
         code_x = SimplexCode(dim_x, field)
         code_z = SimplexCode(dim_z, field)
-        SHPCode.__init__(self, code_x, code_z, set_logicals=set_logicals)
+        super().__init__(code_x, code_z, set_logicals=set_logicals)
 
         self._dimension = dim_x * dim_z

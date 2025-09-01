@@ -96,7 +96,7 @@ class ExtendedHammingCode(ClassicalCode):
         matrix = np.column_stack([np.zeros(matrix.shape[0], dtype=int), matrix])
         matrix = np.vstack([np.ones(matrix.shape[1], dtype=int), matrix])
         matrix[0] += matrix[1]
-        ClassicalCode.__init__(self, matrix)
+        super().__init__(matrix)
 
         self._dimension = len(self) - len(self._matrix)
         self._distance = 4
@@ -112,7 +112,7 @@ class ReedSolomonCode(ClassicalCode):
     """
 
     def __init__(self, bits: int, dimension: int) -> None:
-        ClassicalCode.__init__(self, galois.ReedSolomon(bits, dimension).H)
+        super().__init__(galois.ReedSolomon(bits, dimension).H)
         self._dimension = dimension
 
 
@@ -133,7 +133,7 @@ class BCHCode(ClassicalCode):
                 f"BCH codes over F_{field} are only defined for block lengths {field}^m - 1 with"
                 " integer m."
             )
-        ClassicalCode.__init__(self, galois.BCH(length, dimension, field=galois.GF(field)).H)
+        super().__init__(galois.BCH(length, dimension, field=galois.GF(field)).H)
         self._dimension = dimension
 
 
@@ -197,7 +197,7 @@ class SimplexCode(ClassicalCode):
         polynomial = SimplexCode.get_defining_polynomial(dim, field)
         coefficients = polynomial.coefficients(size=field**dim - 1, order="asc")
         matrix = np.array([np.roll(coefficients, jj) for jj in range(len(coefficients))])
-        ClassicalCode.__init__(self, matrix, field=field)
+        super().__init__(matrix, field=field)
 
         self._dimension = dim
         self._distance = field ** (dim - 1) * (field - 1)
@@ -292,7 +292,7 @@ class TannerCode(ClassicalCode):
             checks = range(subcode.num_checks * idx, subcode.num_checks * (idx + 1))
             bits = [sink_indices[sink] for sink in self._get_sorted_neighbors(source)]
             matrix[np.ix_(checks, bits)] = subcode.matrix
-        ClassicalCode.__init__(self, matrix, subcode.field.order)
+        super().__init__(matrix, subcode.field.order)
 
     def _get_sorted_neighbors(self, node: object) -> Sequence[object]:
         """Sorted neighbors of the given node."""
