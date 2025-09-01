@@ -59,8 +59,7 @@ class FiveQuditCode(QuditCode):
             [-1, 0, 1, 0, 0, 0, 0, 0, 1, -1],
             [0, -1, 0, 1, 0, -1, 0, 0, 0, 1],
         ]
-        QuditCode.__init__(
-            self,
+        super().__init__(
             code_field(1) * np.array(matrix, dtype=int),
             is_subsystem_code=False,
         )
@@ -289,9 +288,7 @@ class QCCode(TBCode):
         # build defining matrices of a quasi-cyclic code; transpose the lift by convention
         matrix_a = self.eval(self.poly_a).lift().T
         matrix_b = self.eval(self.poly_b).lift().T
-        TBCode.__init__(
-            self, matrix_a, matrix_b, field, promise_equal_distance_xz=True, validate=False
-        )
+        super().__init__(matrix_a, matrix_b, field, promise_equal_distance_xz=True, validate=False)
 
     def eval(self, expression: sympy.Basic) -> abstract.RingMember:
         """Convert a sympy expression into an element of this code's group algebra."""
