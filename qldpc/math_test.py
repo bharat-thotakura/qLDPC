@@ -26,10 +26,10 @@ import qldpc
 def test_pauli_strings() -> None:
     """Stabilizers correctly converted into stim.PauliString objects."""
     code = qldpc.codes.FiveQubitCode()
-    assert all(
-        qldpc.math.op_to_string(row) == stim.PauliString(stabilizer.replace(" ", ""))
-        for row, stabilizer in zip(code.matrix, code.get_strings())
-    )
+    for row, stabilizer in zip(code.matrix, code.get_strings()):
+        string = qldpc.math.op_to_string(row)
+        assert string == stim.PauliString(stabilizer.replace(" ", ""))
+        assert np.array_equal(row, qldpc.math.string_to_op(string))
 
 
 def test_vectors() -> None:

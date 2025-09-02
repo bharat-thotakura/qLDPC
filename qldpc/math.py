@@ -59,6 +59,16 @@ def op_to_string(op: npt.NDArray[np.int_]) -> stim.PauliString:
     return stim.PauliString(paulis)
 
 
+def string_to_op(string: stim.PauliString, num_qubits: int | None = None) -> npt.NDArray[np.int_]:
+    """Convert a stim.PauliString into an integer array, inverting qldpc.math.op_to_string.
+
+    The (first, second) half the array indicates the support of (X, Z) Paulis.
+    """
+    num_qubits = num_qubits or len(string)
+    string *= stim.PauliString(f"I{num_qubits - 1}")
+    return np.hstack(string.to_numpy()).astype(int)
+
+
 def symplectic_conjugate(vectors: DenseIntegerArrayType) -> DenseIntegerArrayType:
     """Take symplectic vectors to their duals.
 
