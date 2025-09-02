@@ -73,7 +73,7 @@ Notable features include:
 
 ## 🤔 Questions and issues
 
-This project aspires to have a [documentation page](https://qldpc.readthedocs.io/en/latest), but at the moment the documentation is out of date and auto-generated from source code that was written to be human-readable in a plain text editor.  For now, I recommend looking at the source code (and comments therein) directly, as well as the [`examples`](https://github.com/qLDPCOrg/qLDPC/tree/main/examples) directory.  Test files (such as [`qldpc/codes/quantum_test.py`](https://github.com/qLDPCOrg/qLDPC/blob/main/qldpc/codes/quantum_test.py)) also contain some examples of using the classes and methods in this library.
+This project aspires to one day have a proper [documentation page](https://qldpc.readthedocs.io/en/latest).  In the meantime, I recommend looking at source code and the detailed comments therein, as well as `help(qldpc.object_of_interest)`.  `qLDPC` requires every file (such as [`qldpc/codes/quantum.py`](https://github.com/qLDPCOrg/qLDPC/blob/main/qldpc/codes/quantum.py)) to be covered by its own test file (such as [`qldpc/codes/quantum_test.py`](https://github.com/qLDPCOrg/qLDPC/blob/main/qldpc/codes/quantum_test.py)), so test files are a good place to look for example usage of any function, class, etc.  Finally, the [`examples`](https://github.com/qLDPCOrg/qLDPC/tree/main/examples) directory has some helpful notebooks to get you started.
 
 If you have any questions, feedback, or requests, please [open an issue on GitHub](https://github.com/qLDPCOrg/qLDPC/issues/new) or email me at [mika.perlin@gmail.com](mailto:mika.perlin@gmail.com)!
 
