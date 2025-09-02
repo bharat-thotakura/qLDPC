@@ -20,10 +20,10 @@ from __future__ import annotations
 import functools
 import itertools
 import random
+import unittest.mock
 
 import galois
 import numpy as np
-import numpy.typing as npt
 import pytest
 
 from qldpc import codes, decoders
@@ -31,10 +31,11 @@ from qldpc.math import symplectic_conjugate
 
 
 @functools.cache
-def get_toy_problem() -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_], npt.NDArray[np.int_]]:
+def get_toy_problem() -> tuple[galois.FieldArray, galois.FieldArray, galois.FieldArray]:
     """Get a toy decoding problem."""
-    matrix = np.eye(3, 2, dtype=int)
-    error = np.array([1, 1], dtype=int)
+    field = galois.GF(2)
+    matrix = np.eye(3, 2, dtype=int).view(field)
+    error = np.array([1, 1], dtype=int).view(field)
     syndrome = matrix @ error
     return matrix, error, syndrome
 
@@ -42,13 +43,24 @@ def get_toy_problem() -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_], npt.N
 def test_relay_bp() -> None:
     """The Relay-BP decoder needs a custom wrapper class."""
     matrix, error, syndrome = get_toy_problem()
-    syndrome_batch = np.array([syndrome])
+    errors = np.array([error, error])
+    syndromes = np.array([syndrome, syndrome])
 
     decoder = decoders.get_decoder_RBP("RelayDecoderF32", matrix)
     assert np.array_equal(error, decoder.decode(syndrome))
-    assert np.array_equal(error, decoder.decode_batch(syndrome_batch)[0])
     assert np.array_equal(error, decoder.decode_detailed(syndrome).decoding)
-    assert np.array_equal(error, decoder.decode_detailed_batch(syndrome_batch)[0].decoding)
+    assert np.array_equal(errors, decoder.decode_batch(syndromes))
+
+    # fail to initialize a relay-bp decoder because relay-bp is not installed
+    with (
+        unittest.mock.patch.dict("sys.modules", {"relay_bp": None}),
+        pytest.raises(ImportError, match="Failed to import relay-bp"),
+    ):
+        decoders.get_decoder(np.array([[]]), with_RBP="RelayDecoderF64")
+
+    # fail to initialize a relay-bp decoder from an unrecognized name
+    with pytest.raises(ValueError, match="name not recognized"):
+        decoders.get_decoder(np.array([[]]), with_RBP="invalid_name")
 
 
 def test_lookup() -> None:

@@ -26,6 +26,7 @@ import pymatching
 from qldpc.math import IntegerArray
 
 from .custom import (
+    PLACEHOLDER_ERROR_RATE,
     BatchDecoder,
     Decoder,
     GUFDecoder,
@@ -34,8 +35,6 @@ from .custom import (
     RelayBPDecoder,
     WeightedLookupDecoder,
 )
-
-PLACEHOLDER_ERROR_RATE = 1e-3  # required for some decoding methods
 
 
 def decode(
@@ -66,7 +65,7 @@ def get_decoder(matrix: IntegerArray, **decoder_args: object) -> Decoder:
         return get_decoder_BF(matrix, **decoder_args)
 
     if name := decoder_args.pop("with_RBP", None):
-        return get_decoder_RBP(name, matrix, **decoder_args)
+        return get_decoder_RBP(str(name), matrix, **decoder_args)
 
     if decoder_args.pop("with_MWPM", False):
         return get_decoder_MWPM(matrix, **decoder_args)
@@ -136,26 +135,27 @@ def get_decoder_MWPM(matrix: IntegerArray, **decoder_args: object) -> BatchDecod
     return pymatching.Matching.from_check_matrix(matrix, **decoder_args)
 
 
-def get_decoder_RBP(name: object, matrix: IntegerArray, **decoder_args: object) -> RelayBPDecoder:
+def get_decoder_RBP(name: str, matrix: IntegerArray, **decoder_args: object) -> RelayBPDecoder:
     """Relay-BP decoders.
 
     For details about Relay-BP decoders, see:
     - Documentation: https://pypi.org/project/relay-bp
     - Reference: https://arxiv.org/abs/2506.01779
     """
-    try:
-        import relay_bp
-    except ImportError:
-        raise ImportError("Failed to import relay-bp.  Try installing 'qldpc[relay-bp]'")
-    if not isinstance(name, str) or not hasattr(relay_bp, name):
-        raise ValueError(
-            f"Relay BP decoder name not recognized: {name}\n"
-            "See 'import relay_bp; help(relay_bp.bp)' for available decoders"
+    error_priors = decoder_args.pop("error_priors", None)
+    observable_error_matrix = decoder_args.pop("observable_error_matrix", None)
+    include_decode_result = decoder_args.pop("include_decode_result", False)
+    if decoder_args:
+        raise ValueError(  # pragma: no cover
+            f"Unrecognized arguments for a Relay-BP decoder: {list(decoder_args.keys())}"
         )
-    check_matrix = matrix.view(np.ndarray) if isinstance(matrix, galois.FieldArray) else matrix
-    error_priors = decoder_args.pop("error_priors", [PLACEHOLDER_ERROR_RATE] * matrix.shape[1])
-    decoder = getattr(relay_bp, name)(check_matrix, np.asarray(error_priors), **decoder_args)
-    return RelayBPDecoder(decoder)
+    return RelayBPDecoder(
+        name,
+        matrix,
+        error_priors,  # type:ignore[arg-type]
+        observable_error_matrix=observable_error_matrix,
+        include_decode_result=bool(include_decode_result),
+    )
 
 
 def get_decoder_lookup(matrix: IntegerArray, **decoder_args: object) -> LookupDecoder:

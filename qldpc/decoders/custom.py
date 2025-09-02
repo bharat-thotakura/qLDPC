@@ -18,9 +18,11 @@ limitations under the License.
 from __future__ import annotations
 
 import collections
+import functools
 import itertools
 import warnings
-from typing import TYPE_CHECKING, Callable, Iterator, Protocol
+from collections.abc import Callable, Iterator, Sequence
+from typing import Any, Protocol
 
 import cvxpy
 import galois
@@ -32,8 +34,7 @@ from qldpc.abstract import DEFAULT_FIELD_ORDER
 from qldpc.math import IntegerArray, symplectic_conjugate, symplectic_weight
 from qldpc.objects import Node
 
-if TYPE_CHECKING:
-    import relay_bp
+PLACEHOLDER_ERROR_RATE = 1e-3  # required for some decoding methods
 
 
 class Decoder(Protocol):
@@ -56,28 +57,105 @@ class BatchDecoder(Protocol):
 class RelayBPDecoder(BatchDecoder):
     """Wrapper class for Relay-BP decoders, introduced in arXiv:2506.01779.
 
-    The primary purpose of this class is to cast syndromes to a np.uint8 data type before passing
-    them to the decoders in the relay-bp package, which otherwise throw a type error.
+    Requires relay_bp to be installed, for example via "pip install 'qldpc[relay-bp]'".
+
+    This class first constructs a relay_bp.decoder.DynDecoder decoder by class name, such as
+    "RelayDecoderF32"; see help(relay_bp) for more options.  To enable parallelized decoding, which
+    which as of relay-bp==0.1.0 is only implemented for the relay_bp.ObservableDecoderRunner class,
+    RelayBPDecoder wraps the relay_bp.decoder.DynDecoder in a relay_bp.ObservableDecoderRunner at
+    initialization time.
+
+    IMPORTANT POINTS TO NOTE:
+    -------------------------
+    1. relay_bp.ObservableDecoderRunner expects to be passed an observable_error_matrix when
+        initialized.  If a RelayBPDecoder is initialized without an observable_error_matrix, this
+        matrix is set to np.empty((0, 0), dtype=int).  All observable-related methods of the decoder
+        will subsequently fail.
+    2. RelayBPDecoder "wants" to be a subclass of relay_bp.ObservableDecoderRunner.  However, the
+        latter does not allow subclassing because it is implemented in rust and exposed to Python
+        via bindings.  As a hack, if a decoder: RelayBPDecoder is asked for a method or attribute it
+        does not recognize, such as decoder.decode_observables_batch(detectors, parallel=True) or
+        decoder.decode_detailed(detectors), it tries to pass all arguments to an identically-named
+        method of relay_bp.ObservableDecoderRunner.  A consequence of this hack is that most of the
+        methods that are recognized by RelayBPDecoder in practice do not appear in its documentation.
+        See help(relay_bp.ObservableDecoderRunner) for a list of all RelayBPDecoder methods.
+
+    For details about Relay-BP decoders, see:
+    - Documentation: https://pypi.org/project/relay-bp
+    - Reference: https://arxiv.org/abs/2506.01779
     """
 
-    def __init__(self, decoder: BatchDecoder) -> None:
-        self.decoder = decoder
+    def __init__(
+        self,
+        name: str,
+        matrix: IntegerArray,
+        error_priors: npt.NDArray[np.float64] | Sequence[float] | None,
+        *,
+        observable_error_matrix: IntegerArray | None = None,
+        include_decode_result: bool = False,
+    ) -> None:
+        try:
+            import relay_bp
+        except ImportError:
+            raise ImportError("Failed to import relay-bp.  Try installing 'qldpc[relay-bp]'")
+        if not isinstance(name, str) or not hasattr(relay_bp, name):
+            raise ValueError(
+                f"Relay-BP decoder name not recognized: {name}\n"
+                "See 'import relay_bp; help(relay_bp.bp)' for available Relay-BP decoders"
+            )
 
-    def decode(self, syndrome: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
-        """Decode an error syndrome and return an inferred error."""
-        return self.decoder.decode(np.asarray(syndrome, dtype=np.uint8))
+        # sanitize inputs
+        if isinstance(matrix, galois.FieldArray):
+            matrix = matrix.view(np.ndarray)
+        if error_priors is None:
+            error_priors = [PLACEHOLDER_ERROR_RATE] * matrix.shape[1]
+        if observable_error_matrix is None:
+            observable_error_matrix = np.empty((0, 0), dtype=int)
 
-    def decode_batch(self, syndromes: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
-        """Decode a batch of error syndromes and return inferred errors."""
-        return self.decoder.decode_batch(np.asarray(syndromes, dtype=np.uint8))
+        self.decoder = relay_bp.ObservableDecoderRunner(
+            getattr(relay_bp, name)(matrix, np.asarray(error_priors)),
+            observable_error_matrix,
+            include_decode_result,
+        )
 
-    def decode_detailed(self, syndrome: npt.NDArray[np.int_]) -> relay_bp.DecodeResult:
-        """Decode an error syndrome and return detailed information about the results."""
-        return getattr(self.decoder, "decode_detailed")(np.asarray(syndrome, dtype=np.uint8))
+    def decode(self, /, detectors: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
+        """Decode an error syndrome and return an inferred error.
 
-    def decode_detailed_batch(self, syndromes: npt.NDArray[np.int_]) -> list[relay_bp.DecodeResult]:
-        """Decode a batch of error syndromes and return detailed information about the results."""
-        return getattr(self.decoder, "decode_detailed_batch")(np.asarray(syndromes, dtype=np.uint8))
+        Typecast detectors to np.uint8 for compatibility with the relay_bp package.
+        """
+        return self.decoder.decode(np.asarray(detectors, dtype=np.uint8))
+
+    def decode_batch(
+        self,
+        /,
+        detectors: npt.NDArray[np.int_],
+        parallel: bool = False,
+        progress_bar: bool = True,
+        leave_progress_bar_on_finish: bool = False,
+    ) -> npt.NDArray[np.int_]:
+        """Decode a batch of error syndromes and return inferred errors.
+
+        Typecast detectors to np.uint8 for compatibility with the relay_bp package.
+        """
+        return self.decoder.decode_batch(
+            np.asarray(detectors, dtype=np.uint8),
+            parallel,
+            progress_bar,
+            leave_progress_bar_on_finish,
+        )
+
+    def __getattr__(self, name: str) -> Any:
+        """Inherit all methods of self.decoder: relay_bp.ObservableDecoderRunner.
+
+        Always typecast the first argument to np.uint8 for compatibility with the relay_bp package.
+        """
+        inner_func = getattr(self.decoder, name)
+
+        @functools.wraps(inner_func)
+        def outer_func(*args: object, **kwargs: object) -> Any:
+            return inner_func(np.asarray(args[0], dtype=np.uint8), *args[1:], **kwargs)
+
+        return outer_func
 
 
 class LookupDecoder(Decoder):
