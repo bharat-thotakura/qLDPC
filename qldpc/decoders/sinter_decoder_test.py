@@ -44,3 +44,31 @@ def test_sinter_decoder() -> None:
         compiled_decoder = decoder.compile_decoder_for_dem(dem)
         predicted_flips = compiled_decoder.decode_shots_bit_packed(bit_packed_shots)
         assert np.array_equal(predicted_flips, expected_flips)
+
+
+def test_segment_decoding() -> None:
+    """Decode in segments."""
+    # construct a simple detector error model and sample from it
+    dem = stim.DetectorErrorModel("""
+        error(0.1) D0 L0
+        error(0.1) D1 L1
+    """)
+    sampler = dem.compile_sampler()
+    det_data, obs_data, err_data = sampler.sample(100)
+
+    # build a monolithic vs. segmented decoder
+    decoder_1 = decoders.SinterDecoder(with_lookup=True, max_weight=2)
+    decoder_2 = decoders.CompositeSinterDecoder(
+        ([0], [0]), ([1], [1]), with_lookup=True, max_weight=2
+    )
+
+    # compile the decoders and predict observable flips
+    compiled_decoder_1 = decoder_1.compile_decoder_for_dem(dem)
+    compiled_decoder_2 = decoder_2.compile_decoder_for_dem(dem)
+    predicted_flips_1 = compiled_decoder_1.decode_shots_bit_packed(
+        compiled_decoder_1.packbits(det_data)
+    )
+    predicted_flips_2 = compiled_decoder_2.decode_shots_bit_packed(
+        compiled_decoder_2.packbits(det_data)
+    )
+    assert np.array_equal(predicted_flips_1, predicted_flips_2)

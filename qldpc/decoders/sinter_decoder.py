@@ -17,6 +17,10 @@ limitations under the License.
 
 from __future__ import annotations
 
+import functools
+import operator
+from collections.abc import Collection, Sequence
+
 import numpy as np
 import numpy.typing as npt
 import sinter
@@ -159,3 +163,139 @@ class CompiledSinterDecoder(sinter.CompiledDecoder):
             bitorder="little",
             axis=axis,
         )
+
+
+class CompositeSinterDecoder(SinterDecoder):
+    """Decoder usable by Sinter for decoding circuit errors.
+
+    This decoder splits a detector error model into independent decoding problems, or segments,
+    defined by subsets of detectors and observables in a detector error model.  This is useful for
+    independently decoding the X and Z sectors of a CSS code.
+    """
+
+    def __init__(
+        self,
+        *detectors_and_observables: tuple[Collection[int], Collection[int]],
+        priors_arg: str | None = None,
+        log_likelihood_priors: bool = False,
+        **decoder_kwargs: object,
+    ) -> None:
+        """Initialize a SinterDecoder to independently decode subsets of detectors and observables.
+
+        A CompositeSinterDecoder is used by Sinter to decode detection events from circuit (or, more
+        generally, detector error model) simulations to predict observable flips.
+
+        See help(sinter.Decoder) for additional information.
+
+        Args:
+            *detectors_and_observables: Tuples of detector indices and associated observable indices
+                that define the segments to decode independently.
+            priors_arg: The keyword argument to which to pass the probabilities of circuit error
+                likelihoods.  This argument is only necessary for custom decoders.
+            log_likelihood_priors: If True, instead of error probabilities p, pass log-likelihoods
+                np.log((1 - p) / p) to the priors_arg.  This argument is only necessary for custom
+                decoders.  Default: False (unless decoding with MWPM).
+            **decoder_kwargs: Arguments to pass to qldpc.decoders.get_decoder when compiling a
+                custom decoder from a detector error model.
+        """
+        self.segment_detectors, self.segment_observables = zip(
+            *[
+                (list(detectors), list(observables))
+                for detectors, observables in detectors_and_observables
+            ]
+        )
+        SinterDecoder.__init__(
+            self,
+            priors_arg=priors_arg,
+            log_likelihood_priors=log_likelihood_priors,
+            **decoder_kwargs,
+        )
+
+    def compile_decoder_for_dem(
+        self, dem: stim.DetectorErrorModel
+    ) -> CompiledCompositeSinterDecoder:
+        """Creates a decoder preconfigured for the given detector error model.
+
+        See help(sinter.Decoder) for additional information.
+        """
+        dem_arrays = DetectorErrorModelArrays(dem)
+        segment_dems = [
+            DetectorErrorModelArrays.from_arrays(
+                dem_arrays.detector_flip_matrix[detectors, :],
+                dem_arrays.observable_flip_matrix[observables, :],
+                dem_arrays.error_probs,
+            )
+            .simplify()
+            .to_detector_error_model()
+            for detectors, observables in zip(self.segment_detectors, self.segment_observables)
+        ]
+        compiled_decoders = [
+            SinterDecoder.compile_decoder_for_dem(self, segment_dem) for segment_dem in segment_dems
+        ]
+        return CompiledCompositeSinterDecoder(
+            self.segment_detectors, self.segment_observables, compiled_decoders
+        )
+
+
+class CompiledCompositeSinterDecoder(CompiledSinterDecoder):
+    """Decoder usable by Sinter for decoding circuit errors, compiled to a specific circuit.
+
+    This decoder splits a decoding problem into segments and solves each segment independently.
+    Here a segment is defined by its own subset of detectors, subset of observables, and decoder.
+
+    Instances of this class are meant to be constructed by a CompositeSinterDecoder, whose
+    .compile_decoder_for_dem method returns a CompiledCompositeSinterDecoder.
+    """
+
+    def __init__(
+        self,
+        segment_detectors: Sequence[list[int]],
+        segment_observables: Sequence[list[int]],
+        segment_decoders: Sequence[CompiledSinterDecoder],
+    ) -> None:
+        assert len(segment_detectors) == len(segment_observables) == len(segment_decoders)
+        self.segment_detectors = segment_detectors
+        self.segment_observables = segment_observables
+        self.segment_decoders = segment_decoders
+
+        self.num_detectors = sum(
+            decoder.dem_arrays.num_detectors for decoder in self.segment_decoders
+        )
+        self.permutation_to_sort_observables = np.argsort(
+            functools.reduce(operator.add, self.segment_observables)
+        )
+
+    def decode_shots_bit_packed(
+        self, bit_packed_detection_event_data: npt.NDArray[np.uint8]
+    ) -> npt.NDArray[np.uint8]:
+        """Predicts observable flips from the given detection events.
+
+        This method accepts and returns bit-packed data.
+
+        See help(sinter.CompiledDecoder) for additional information.
+        """
+        detection_event_data = self.unpack_detection_event_data(bit_packed_detection_event_data)
+        observable_flips = self.decode_shots(detection_event_data)
+        return self.packbits(observable_flips)
+
+    def decode_shots(self, detection_event_data: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
+        """Predicts observable flips from the given detection events.
+
+        This method accepts and returns boolean data.
+
+        See help(sinter.CompiledDecoder) for additional information.
+        """
+        # split detection event data into syndromes in each segment
+        syndromes = [
+            detection_event_data.T[detectors].T
+            for detectors, decoder in zip(self.segment_detectors, self.segment_decoders)
+        ]
+
+        # decode segments independently
+        observable_flips = [
+            decoder.decode_shots(segment_syndromes)
+            for segment_syndromes, decoder in zip(syndromes, self.segment_decoders)
+        ]
+
+        # stack observable flips and permute observables appropriately
+        return np.hstack(observable_flips).T[self.permutation_to_sort_observables].T
