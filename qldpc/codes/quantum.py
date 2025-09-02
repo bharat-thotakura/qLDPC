@@ -100,9 +100,10 @@ class SteaneCode(QuantumHammingCode):
     - https://errorcorrectionzoo.org/c/steane
     """
 
-    def __init__(self) -> None:
+    def __init__(self, set_logicals: bool = True) -> None:
         super().__init__(rank=3)
-        self.set_logical_ops_xz([[1] * 7], [[1] * 7], validate=False)
+        if set_logicals:
+            self.set_logical_ops_xz([[1] * 7], [[1] * 7], validate=False)
 
 
 class IcebergCode(CSSCode):
