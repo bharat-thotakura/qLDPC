@@ -22,7 +22,7 @@ import dataclasses
 import functools
 import itertools
 import operator
-from collections.abc import Iterator, Sequence
+from collections.abc import Hashable, Iterator, Sequence
 
 import stim
 
@@ -91,21 +91,21 @@ class Record:
     """
 
     num_events: int
-    key_to_events: dict[int, list[int]]
+    key_to_events: dict[Hashable, list[int]]
 
-    def __init__(self, initial_record: dict[int, list[int]] | None = None) -> None:
+    def __init__(self, initial_record: dict[Hashable, list[int]] | None = None) -> None:
         self.key_to_events = collections.defaultdict(list, initial_record if initial_record else {})
         self.num_events = sum(len(events) for events in self.key_to_events.values())
 
-    def items(self) -> Iterator[tuple[int, list[int]]]:
+    def items(self) -> Iterator[tuple[Hashable, list[int]]]:
         """Iterator over keys and their associated events."""
         yield from self.key_to_events.items()
 
-    def get_events(self, *keys: int) -> list[int]:
+    def get_events(self, *keys: Hashable) -> list[int]:
         """The events associated with a key."""
         return functools.reduce(operator.add, (self.key_to_events.get(key, []) for key in keys))
 
-    def append(self, record: Record | dict[int, list[int]], repeat: int = 1) -> None:
+    def append(self, record: Record | dict[Hashable, list[int]], repeat: int = 1) -> None:
         """Append the given record to this one.
 
         All event numbers in the appended record are increased by the number of events in the current
@@ -128,11 +128,11 @@ class Record:
 class MeasurementRecord(Record):
     """An record of measurements in a Stim circuit, organized by qubit index."""
 
-    def get_target_rec(self, qubit: int, measurement_index: int = -1) -> stim.target_rec:
+    def get_target_rec(self, qubit: Hashable, measurement_index: int = -1) -> stim.target_rec:
         """Retrieve a Stim measurement record target for the given qubit.
 
         Args:
-            qubit: The qubit (by index) whose measurement record we want.
+            qubit: The qubit whose measurement record we want.
             measurement_index: An index specifying which measurement of the specified qubit we want.
                 A measurement_index of 0 would be the first measurement of the qubit, while a
                 measurement_index of -1 would be the most recent measurement.  Default value: -1.
@@ -152,7 +152,7 @@ class MeasurementRecord(Record):
 class DetectorRecord(Record):
     """An record of detectors in a Stim circuit, organized by parity check index."""
 
-    def get_detector(self, check: int, detection_index: int = -1) -> int:
+    def get_detector(self, check: Hashable, detection_index: int = -1) -> int:
         """Retrieve a Stim detector (by index) for the given parity check.
 
         Args:
