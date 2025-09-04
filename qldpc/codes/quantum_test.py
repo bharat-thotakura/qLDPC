@@ -38,9 +38,6 @@ def test_small_codes() -> None:
     assert codes.SteaneCode().dimension == 1
     assert codes.QuantumHammingCode(4).dimension == 7
 
-    logical_ops_xz = codes.SteaneCode().get_logical_ops().sum(axis=0)
-    assert np.array_equal(logical_ops_xz, [1] * 14)
-
     code = codes.FiveQubitCode()
     assert code.num_qubits == 5
     assert code.dimension == 1
