@@ -18,11 +18,13 @@ limitations under the License.
 from __future__ import annotations
 
 import collections
+import copy
 import dataclasses
 import functools
 import itertools
 import operator
 from collections.abc import Hashable, Iterator, Sequence
+from typing import Self
 
 import stim
 
@@ -100,6 +102,12 @@ class Record:
     def items(self) -> Iterator[tuple[Hashable, list[int]]]:
         """Iterator over keys and their associated events."""
         yield from self.key_to_events.items()
+
+    def copy(self) -> Self:
+        """A copy of this Record."""
+        return type(self)(
+            {copy.deepcopy(key): copy.deepcopy(events) for key, events in self.items()}
+        )
 
     def get_events(self, *keys: Hashable) -> list[int]:
         """The events associated with a key."""

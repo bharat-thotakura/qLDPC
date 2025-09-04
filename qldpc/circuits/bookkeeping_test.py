@@ -45,15 +45,15 @@ def test_qubit_ids() -> None:
 
 def test_records() -> None:
     """Measurement and detector records."""
-    record = circuits.Record({0: [0]})
-    assert record.num_events == 1
-    record.append({0: [1], 2: [0]})
-    assert record.num_events == 3
-    record.append({1: [0, 1]}, repeat=3)
-    assert record.key_to_events[1] == [3, 4, 5, 6, 7, 8]
-    assert dict(record.items()) == record.key_to_events
+    base_record = circuits.Record({0: [0]})
+    assert base_record.num_events == 1
+    base_record.append({0: [1], 2: [0]})
+    assert base_record.num_events == 3
+    base_record.append({1: [0, 1]}, repeat=3)
+    assert base_record.key_to_events[1] == [3, 4, 5, 6, 7, 8]
+    assert dict(base_record.items()) == base_record.key_to_events
 
-    measurement_record = circuits.MeasurementRecord(record.key_to_events)
+    measurement_record = circuits.MeasurementRecord(base_record.key_to_events)
     assert measurement_record.num_events == 9
     assert measurement_record.get_target_rec(2) == stim.target_rec(-8)
     assert measurement_record.get_target_rec(0) == stim.target_rec(-7)
@@ -64,7 +64,7 @@ def test_records() -> None:
     with pytest.raises(ValueError, match="Invalid measurement index"):
         measurement_record.get_target_rec(0, 2)
 
-    detector_record = circuits.DetectorRecord(record.key_to_events)
+    detector_record = circuits.DetectorRecord(base_record.key_to_events)
     assert detector_record.num_events == 9
     assert detector_record.get_detector(2) == 1
     assert detector_record.get_detector(0) == 2
@@ -74,3 +74,8 @@ def test_records() -> None:
         detector_record.get_detector(3)
     with pytest.raises(ValueError, match="Invalid detection index"):
         detector_record.get_detector(0, 2)
+
+    for record in [base_record, measurement_record, detector_record]:
+        record_copy = record.copy()
+        assert isinstance(record_copy, type(record))
+        assert list(record_copy.items()) == list(record.items())
