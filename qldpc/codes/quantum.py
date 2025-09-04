@@ -100,10 +100,8 @@ class SteaneCode(QuantumHammingCode):
     - https://errorcorrectionzoo.org/c/steane
     """
 
-    def __init__(self, set_logicals: bool = True) -> None:
+    def __init__(self) -> None:
         super().__init__(rank=3)
-        if set_logicals:
-            self.set_logical_ops_xz([[1] * 7], [[1] * 7], validate=False)
 
 
 class IcebergCode(CSSCode):
@@ -612,7 +610,8 @@ class BBCode(QCCode):
         # identify collections of monomials that can be combined to obtain a toric layout
         toric_params = []
         for (a_1, a_2), (b_1, b_2) in itertools.product(
-            itertools.combinations(monomials_a, 2), itertools.combinations(monomials_b, 2)
+            itertools.combinations(monomials_a, 2),
+            itertools.combinations(monomials_b, 2),
         ):
             vec_g = self.as_exponent_vector(a_2 / a_1)
             vec_h = self.as_exponent_vector(b_2 / b_1)
