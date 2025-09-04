@@ -26,6 +26,7 @@ import galois
 import numpy as np
 import pytest
 import scipy.sparse
+import stim
 
 from qldpc import codes, decoders
 from qldpc.math import symplectic_conjugate
@@ -165,3 +166,13 @@ def test_quantum_decoding(pytestconfig: pytest.Config) -> None:
     decoder = decoders.WeightedLookupDecoder(code.matrix, symplectic=True, max_weight=2)
     decoded_error = decoder.decode(syndrome).view(code.field)
     assert np.array_equal(syndrome, symplectic_conjugate(code.matrix) @ decoded_error)
+
+
+def test_penalty_func() -> None:
+    """Lookup tables can build penalty functions for detector error models."""
+    dem = stim.DetectorErrorModel("""
+        error(0.2) D0
+        error(0.1) D1
+    """)
+    penalty_func = decoders.LookupDecoder.build_penalty_func(dem)
+    assert penalty_func([0, 0]) < penalty_func([1, 0]) < penalty_func([0, 1]) < penalty_func([1, 1])

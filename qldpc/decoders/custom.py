@@ -28,6 +28,7 @@ import galois
 import numpy as np
 import numpy.typing as npt
 import scipy.sparse
+import stim
 
 from qldpc import codes
 from qldpc.abstract import DEFAULT_FIELD_ORDER
@@ -185,7 +186,7 @@ class LookupDecoder(Decoder):
         max_weight: int,
         *,
         symplectic: bool = False,
-        penalty_func: Callable[[npt.NDArray[np.int_]], float] | None = None,
+        penalty_func: Callable[[npt.NDArray[np.int_] | Sequence[int]], float] | None = None,
     ) -> None:
         self.shape: tuple[int, ...] = matrix.shape
         self.syndrome_to_correction = {}
@@ -230,6 +231,20 @@ class LookupDecoder(Decoder):
         return self.syndrome_to_correction.get(
             tuple(syndrome.view(np.ndarray)), np.zeros(self.shape[1], dtype=int)
         )
+
+    def build_penalty_func(
+        dem: stim.DetectorErrorModel,
+    ) -> Callable[[npt.NDArray[np.int_] | Sequence[int]], float]:
+        """Construct a penalty function for a detector error model, penalizing unlikely errors."""
+        penalty = np.array([error.args_copy()[0] for error in dem])
+
+        def penalty_func(error: npt.NDArray[np.int_] | Sequence[int]) -> float:
+            """Penalize unlikely errors."""
+            events = np.asarray(error).astype(bool)
+            probability_of_error = float(np.prod(penalty[events]) * np.prod(1 - penalty[~events]))
+            return -probability_of_error
+
+        return penalty_func
 
 
 class WeightedLookupDecoder(LookupDecoder):
