@@ -25,6 +25,7 @@ import unittest.mock
 import galois
 import numpy as np
 import pytest
+import scipy.sparse
 
 from qldpc import codes, decoders
 from qldpc.math import symplectic_conjugate
@@ -48,8 +49,10 @@ def test_relay_bp() -> None:
 
     decoder = decoders.get_decoder_RBP("RelayDecoderF32", matrix)
     assert np.array_equal(error, decoder.decode(syndrome))
-    assert np.array_equal(error, decoder.decode_detailed(syndrome).decoding)
     assert np.array_equal(errors, decoder.decode_batch(syndromes))
+
+    decoder = decoders.get_decoder_RBP("RelayDecoderF32", scipy.sparse.dok_matrix(matrix))
+    assert np.array_equal(error, decoder.decode_detailed(syndrome).decoding)
 
     # fail to initialize a relay-bp decoder because relay-bp is not installed
     with (

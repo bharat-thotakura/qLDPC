@@ -28,6 +28,7 @@ import cvxpy
 import galois
 import numpy as np
 import numpy.typing as npt
+import scipy.sparse
 
 from qldpc import codes
 from qldpc.abstract import DEFAULT_FIELD_ORDER
@@ -107,6 +108,9 @@ class RelayBPDecoder(BatchDecoder):
         # sanitize inputs
         if isinstance(matrix, galois.FieldArray):
             matrix = matrix.view(np.ndarray)
+        elif isinstance(matrix, scipy.sparse.spmatrix):
+            matrix = matrix.tocsc()
+            matrix.sort_indices()  # type:ignore[union-attr]
         if error_priors is None:
             error_priors = [PLACEHOLDER_ERROR_RATE] * matrix.shape[1]
         if observable_error_matrix is None:
