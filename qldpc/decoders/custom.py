@@ -216,7 +216,7 @@ class LookupDecoder(Decoder):
         error_ops = tuple(itertools.product(range(code.field.order), repeat=repeat))[1:]
 
         block_length = matrix.shape[1] // repeat
-        for weight in range(max_weight, 0, -1):
+        for weight in range(max_weight, -1, -1):
             for error_sites in itertools.combinations(range(block_length), weight):
                 error_site_indices = list(error_sites)
                 for local_errors in itertools.product(error_ops, repeat=weight):
