@@ -83,7 +83,7 @@ def require_package(name: str, repo: str | None = None) -> None:
         )
 
     availability = get_output(f'Print(TestPackageAvailability("{name.lower()}"));')
-    if availability == "fail":
+    if availability.strip() == "fail":
         response = (
             input(f"GAP package {name} is required but not installed.  Try to install it? (Y/n)")
             .strip()
