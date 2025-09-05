@@ -21,7 +21,7 @@ import stim
 from qldpc import decoders
 
 
-def test_sinter() -> None:
+def test_sinter_decoder() -> None:
     """Try out a simple decoding problem."""
     dem = stim.DetectorErrorModel("""
         error(0.0001) D0

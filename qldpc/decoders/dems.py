@@ -74,11 +74,11 @@ class DetectorErrorModelArrays:
         error_probs: npt.NDArray[np.float64],
     ) -> DetectorErrorModelArrays:
         """Initialize from arrays directly."""
-        dems = object.__new__(DetectorErrorModelArrays)
-        dems.detector_flip_matrix = scipy.sparse.csc_matrix(detector_flip_matrix)
-        dems.observable_flip_matrix = scipy.sparse.csc_matrix(observable_flip_matrix)
-        dems.error_probs = np.asarray(error_probs)
-        return dems
+        dem_arrays = object.__new__(DetectorErrorModelArrays)
+        dem_arrays.detector_flip_matrix = scipy.sparse.csc_matrix(detector_flip_matrix)
+        dem_arrays.observable_flip_matrix = scipy.sparse.csc_matrix(observable_flip_matrix)
+        dem_arrays.error_probs = np.asarray(error_probs)
+        return dem_arrays
 
     @property
     def num_errors(self) -> int:

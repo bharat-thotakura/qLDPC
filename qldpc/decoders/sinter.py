@@ -49,11 +49,11 @@ class SinterDecoder(sinter.Decoder):
 
         Args:
             priors_arg: The keyword argument to which to pass the probabilities of circuit error
-                likelihoods.  This argument is only necessary for custom retrieval.
+                likelihoods.  This argument is only necessary for custom decoders.
             log_likelihood_priors: If True, instead of error probabilities p, pass log-likelihoods
                 np.log((1 - p) / p) to the priors_arg.  This argument is only necessary for custom
-                retrieval.  Default: False (unless decoding with MWPM).
-            **decoder_kwargs: Arguments to pass to qldpc.retrieval.get_decoder when compiling a
+                decoders.  Default: False (unless decoding with MWPM).
+            **decoder_kwargs: Arguments to pass to qldpc.decoders.get_decoder when compiling a
                 custom decoder from a detector error model.
         """
         self.priors_arg = priors_arg
@@ -81,17 +81,19 @@ class SinterDecoder(sinter.Decoder):
 
         See help(sinter.Decoder) for additional information.
         """
-        dems = DetectorErrorModelArrays(dem, simplify=simplify)
-        decoder = self.get_configured_decoder(dems)
-        return CompiledSinterDecoder(dems, decoder)
+        dem_arrays = DetectorErrorModelArrays(dem, simplify=simplify)
+        decoder = self.get_configured_decoder(dem_arrays)
+        return CompiledSinterDecoder(dem_arrays, decoder)
 
-    def get_configured_decoder(self, dems: DetectorErrorModelArrays) -> Decoder:
+    def get_configured_decoder(self, dem_arrays: DetectorErrorModelArrays) -> Decoder:
         """Configure a Decoder from the given DetectorErrorModelArrays."""
-        priors = dems.error_probs
+        priors = dem_arrays.error_probs
         if self.log_likelihood_priors:
             priors = np.log((1 - priors) / priors)
         priors_kwarg = {self.priors_arg: list(priors)} if self.priors_arg else {}
-        decoder = get_decoder(dems.detector_flip_matrix, **self.decoder_kwargs, **priors_kwarg)
+        decoder = get_decoder(
+            dem_arrays.detector_flip_matrix, **self.decoder_kwargs, **priors_kwarg
+        )
         return decoder
 
 
@@ -102,10 +104,10 @@ class CompiledSinterDecoder(sinter.CompiledDecoder):
     .compile_decoder_for_dem method returns a CompiledSinterDecoder.
     """
 
-    def __init__(self, dems: DetectorErrorModelArrays, decoder: Decoder) -> None:
-        self.dems = dems
+    def __init__(self, dem_arrays: DetectorErrorModelArrays, decoder: Decoder) -> None:
+        self.dem_arrays = dem_arrays
         self.decoder = decoder
-        self.num_detectors = self.dems.num_detectors
+        self.num_detectors = self.dem_arrays.num_detectors
 
     def decode_shots_bit_packed(
         self, bit_packed_detection_event_data: npt.NDArray[np.uint8]
@@ -129,12 +131,14 @@ class CompiledSinterDecoder(sinter.CompiledDecoder):
         """
         if hasattr(self.decoder, "decode_batch"):
             predicted_errors_T = self.decoder.decode_batch(detection_event_data)
-            observable_flips = predicted_errors_T @ self.dems.observable_flip_matrix.T % 2
+            observable_flips = predicted_errors_T @ self.dem_arrays.observable_flip_matrix.T % 2
         else:
             observable_flips = []
             for syndrome in detection_event_data:
                 predicted_errors = self.decoder.decode(syndrome)
-                observable_flips.append(self.dems.observable_flip_matrix @ predicted_errors % 2)
+                observable_flips.append(
+                    self.dem_arrays.observable_flip_matrix @ predicted_errors % 2
+                )
         return np.asarray(observable_flips, dtype=np.uint8)
 
     def packbits(self, data: npt.NDArray[np.uint8], axis: int = 1) -> npt.NDArray[np.uint8]:
@@ -189,11 +193,11 @@ class CompositeSinterDecoder(SinterDecoder):
             *detectors_and_observables: Tuples of detector indices and associated observable indices
                 that define the segments to decode independently.
             priors_arg: The keyword argument to which to pass the probabilities of circuit error
-                likelihoods.  This argument is only necessary for custom retrieval.
+                likelihoods.  This argument is only necessary for custom decoders.
             log_likelihood_priors: If True, instead of error probabilities p, pass log-likelihoods
                 np.log((1 - p) / p) to the priors_arg.  This argument is only necessary for custom
-                retrieval.  Default: False (unless decoding with MWPM).
-            **decoder_kwargs: Arguments to pass to qldpc.retrieval.get_decoder when compiling a
+                decoders.  Default: False (unless decoding with MWPM).
+            **decoder_kwargs: Arguments to pass to qldpc.decoders.get_decoder when compiling a
                 custom decoder from a detector error model.
         """
         self.segment_detectors, self.segment_observables = zip(
@@ -216,22 +220,22 @@ class CompositeSinterDecoder(SinterDecoder):
 
         See help(sinter.Decoder) for additional information.
         """
-        dems = DetectorErrorModelArrays(dem, simplify=simplify)
+        dem_arrays = DetectorErrorModelArrays(dem, simplify=simplify)
         segment_dems = [
             DetectorErrorModelArrays.from_arrays(
-                dems.detector_flip_matrix[detectors, :],
-                dems.observable_flip_matrix[observables, :],
-                dems.error_probs,
+                dem_arrays.detector_flip_matrix[detectors, :],
+                dem_arrays.observable_flip_matrix[observables, :],
+                dem_arrays.error_probs,
             )
             .simplify()
             .to_detector_error_model()
             for detectors, observables in zip(self.segment_detectors, self.segment_observables)
         ]
-        compiled_retrieval = [
+        compiled_decoders = [
             SinterDecoder.compile_decoder_for_dem(self, segment_dem) for segment_dem in segment_dems
         ]
         return CompiledCompositeSinterDecoder(
-            self.segment_detectors, self.segment_observables, compiled_retrieval
+            self.segment_detectors, self.segment_observables, compiled_decoders
         )
 
 
@@ -249,14 +253,16 @@ class CompiledCompositeSinterDecoder(CompiledSinterDecoder):
         self,
         segment_detectors: Sequence[list[int]],
         segment_observables: Sequence[list[int]],
-        segment_retrieval: Sequence[CompiledSinterDecoder],
+        segment_decoders: Sequence[CompiledSinterDecoder],
     ) -> None:
-        assert len(segment_detectors) == len(segment_observables) == len(segment_retrieval)
+        assert len(segment_detectors) == len(segment_observables) == len(segment_decoders)
         self.segment_detectors = segment_detectors
         self.segment_observables = segment_observables
-        self.segment_retrieval = segment_retrieval
+        self.segment_decoders = segment_decoders
 
-        self.num_detectors = sum(decoder.dems.num_detectors for decoder in self.segment_retrieval)
+        self.num_detectors = sum(
+            decoder.dem_arrays.num_detectors for decoder in self.segment_decoders
+        )
         self.permutation_to_sort_observables = np.argsort(
             functools.reduce(operator.add, self.segment_observables)
         )
@@ -284,13 +290,13 @@ class CompiledCompositeSinterDecoder(CompiledSinterDecoder):
         # split detection event data into syndromes in each segment
         syndromes = [
             detection_event_data.T[detectors].T
-            for detectors, decoder in zip(self.segment_detectors, self.segment_retrieval)
+            for detectors, decoder in zip(self.segment_detectors, self.segment_decoders)
         ]
 
         # decode segments independently
         observable_flips = [
             decoder.decode_shots(segment_syndromes)
-            for segment_syndromes, decoder in zip(syndromes, self.segment_retrieval)
+            for segment_syndromes, decoder in zip(syndromes, self.segment_decoders)
         ]
 
         # stack observable flips and permute observables appropriately
