@@ -194,7 +194,7 @@ def _get_logical_tableau_from_code_data(
 
 
 def with_remapped_qubits(
-    circuit: stim.Circuit, qubit_map: Mapping[int, int] | Sequence[int]
+    circuit: stim.Circuit, qubit_map: Mapping[int, int] | Sequence[int], *, inverse: bool = False
 ) -> stim.Circuit:
     """The same circuit, but with relabeled qubits.
 
@@ -204,6 +204,7 @@ def with_remapped_qubits(
         circuit: The circuit to remap.
         qubit_map: Either a mapping (e.g., dictionary) from old to new qubit indices, or a sequence
             for which the qubit at index old_index gets mapped to new_index = qubit_map[old_index].
+        inverse: If True, invert the provided qubit_map.  Default: False.
 
     Returns:
         stim.Circuit: A remapped circuit.
@@ -213,6 +214,8 @@ def with_remapped_qubits(
         if isinstance(qubit_map, Mapping)
         else {old_index: new_index for old_index, new_index in enumerate(qubit_map)}
     )
+    if inverse:
+        qubit_map = {val: key for key, val in qubit_map.items()}
 
     new_circuit = stim.Circuit()
     for op in circuit:

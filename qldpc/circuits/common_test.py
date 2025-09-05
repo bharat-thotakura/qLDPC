@@ -106,6 +106,7 @@ def test_qubit_remap(num_qubits: int = 8) -> None:
 
     # remap qubits using circuits.with_remapped_qubits
     circuit_a = circuits.with_remapped_qubits(circuit, qubit_map)
+    assert circuit == circuits.with_remapped_qubits(circuit_a, qubit_map, inverse=True)
 
     # manually construct a permutation circuit to implement the remapping
     inverse_permutation_circuit = stim.Circuit()
