@@ -55,11 +55,12 @@ class QubitIDs:
         yield from (self.data, self.check, self.ancilla)
 
     @staticmethod
-    def from_code(code: codes.QuditCode) -> QubitIDs:
+    def from_code(code: codes.QuditCode, *, num_ancillas: int = 0) -> QubitIDs:
         """Initialize from an error-correcting code with specific parity checks."""
         data = tuple(range(len(code)))
         check = tuple(range(len(code), len(code) + code.num_checks))
-        qubit_ids = QubitIDs(data, check)
+        ancilla = tuple(range(check[-1] + 1, check[-1] + 1 + num_ancillas))
+        qubit_ids = QubitIDs(data, check, ancilla)
         qubit_ids.checks_x = check[: code.num_checks_x] if isinstance(code, codes.CSSCode) else ()
         qubit_ids.checks_z = check[code.num_checks_x :] if isinstance(code, codes.CSSCode) else ()
         return qubit_ids
@@ -74,10 +75,23 @@ class QubitIDs:
             qubit_ids.checks_z = tuple(qubit_ids.check[code.num_checks_x :])
         return qubit_ids
 
+    def max(self) -> int:
+        """The largest index of any tracked qubit."""
+        return max(itertools.chain(*self))
+
+    def shift(self, shift: int) -> QubitIDs:
+        """Shift all qubit indices by the given amount and return self."""
+        self.data = tuple(qq + shift for qq in self.data)
+        self.check = tuple(qq + shift for qq in self.check)
+        self.ancilla = tuple(qq + shift for qq in self.ancilla)
+        self.checks_x = tuple(qq + shift for qq in self.checks_x)
+        self.checks_z = tuple(qq + shift for qq in self.checks_z)
+        return self
+
     def add_ancillas(self, number: int) -> None:
         """Add ancilla qubits."""
         if number > 0:
-            start = max(itertools.chain(*self)) + 1
+            start = self.max() + 1
             self.ancilla += tuple(range(start, start + number))
 
 

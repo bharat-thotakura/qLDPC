@@ -26,17 +26,19 @@ from qldpc import circuits, codes
 def test_qubit_ids() -> None:
     """Default qubit indices."""
     code = codes.SteaneCode()
-    qubit_ids = circuits.QubitIDs.from_code(code)
+    qubit_ids = circuits.QubitIDs.from_code(code, num_ancillas=2)
     data_ids, check_ids, ancilla_ids = qubit_ids
     assert data_ids == tuple(range(len(code)))
     assert check_ids == tuple(range(len(code), len(code) + code.num_checks))
-    assert not ancilla_ids
+    assert ancilla_ids == tuple(range(len(code) + code.num_checks, len(code) + code.num_checks + 2))
 
-    num_ancillas = 3
-    qubit_ids.add_ancillas(num_ancillas)
+    qubit_ids.add_ancillas(3)
     assert qubit_ids.ancilla == tuple(
-        range(len(code) + code.num_checks, len(code) + code.num_checks + num_ancillas)
+        range(len(code) + code.num_checks, len(code) + code.num_checks + 5)
     )
+
+    qubit_ids.shift(3)
+    assert qubit_ids.data == tuple(qq + 3 for qq in data_ids)
 
     assert qubit_ids == circuits.QubitIDs.validated(qubit_ids, code)
     with pytest.raises(ValueError, match="invalid for the given code"):
