@@ -9,7 +9,8 @@ from .custom import (
     RelayBPDecoder,
     WeightedLookupDecoder,
 )
-from .decoders import (
+from .dems import DetectorErrorModelArrays
+from .retrieval import (
     decode,
     get_decoder,
     get_decoder_BF,
@@ -21,8 +22,7 @@ from .decoders import (
     get_decoder_MWPM,
     get_decoder_RBP,
 )
-from .dem_arrays import DetectorErrorModelArrays
-from .sinter_decoder import (
+from .sinter import (
     CompiledCompositeSinterDecoder,
     CompiledSinterDecoder,
     CompositeSinterDecoder,
@@ -39,6 +39,7 @@ __all__ = [
     "LookupDecoder",
     "RelayBPDecoder",
     "WeightedLookupDecoder",
+    "DetectorErrorModelArrays",
     "decode",
     "get_decoder",
     "get_decoder_BF",
@@ -49,7 +50,6 @@ __all__ = [
     "get_decoder_lookup",
     "get_decoder_MWPM",
     "get_decoder_RBP",
-    "DetectorErrorModelArrays",
     "CompiledCompositeSinterDecoder",
     "CompiledSinterDecoder",
     "CompositeSinterDecoder",

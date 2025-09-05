@@ -1,4 +1,4 @@
-"""Unit tests for dem_arrays.py
+"""Unit tests for dems.py
 
 Copyright 2023 The qLDPC Authors and Infleqtion Inc.
 
@@ -29,25 +29,25 @@ def test_initialization() -> None:
         error(0.002) D0 D1
         error(0.003) D2 L1
     """)
-    dem_arrays = decoders.DetectorErrorModelArrays(dem)
-    assert dem.approx_equals(dem_arrays.to_detector_error_model(), atol=1e-10)
-    assert dem_arrays.num_errors == 3
-    assert dem_arrays.num_detectors == 3
-    assert dem_arrays.num_observables == 2
+    dems = decoders.DetectorErrorModelArrays(dem)
+    assert dem.approx_equals(dems.to_detector_error_model(), atol=1e-10)
+    assert dems.num_errors == 3
+    assert dems.num_detectors == 3
+    assert dems.num_observables == 2
 
-    other_dem_arrays = decoders.DetectorErrorModelArrays.from_arrays(
-        dem_arrays.detector_flip_matrix,
-        dem_arrays.observable_flip_matrix,
-        dem_arrays.error_probs,
+    other_dems = decoders.DetectorErrorModelArrays.from_arrays(
+        dems.detector_flip_matrix,
+        dems.observable_flip_matrix,
+        dems.error_probs,
     )
     assert np.allclose(
-        other_dem_arrays.detector_flip_matrix.todense(), dem_arrays.detector_flip_matrix.todense()
+        other_dems.detector_flip_matrix.todense(), dems.detector_flip_matrix.todense()
     )
     assert np.allclose(
-        other_dem_arrays.observable_flip_matrix.todense(),
-        dem_arrays.observable_flip_matrix.todense(),
+        other_dems.observable_flip_matrix.todense(),
+        dems.observable_flip_matrix.todense(),
     )
-    assert np.allclose(other_dem_arrays.error_probs, dem_arrays.error_probs)
+    assert np.allclose(other_dems.error_probs, dems.error_probs)
 
 
 def test_simplify() -> None:
@@ -68,13 +68,13 @@ def test_simplify() -> None:
         error(0.006) D0 D3
         error(0.005) L1
     """)
-    dem_arrays = decoders.DetectorErrorModelArrays(dem, simplify=True)
-    assert simplified_dem.approx_equals(dem_arrays.to_detector_error_model(), atol=1e-4)
-    assert dem_arrays.num_errors == 3
-    assert dem_arrays.num_detectors == 4
-    assert dem_arrays.num_observables == 2
+    dems = decoders.DetectorErrorModelArrays(dem, simplify=True)
+    assert simplified_dem.approx_equals(dems.to_detector_error_model(), atol=1e-4)
+    assert dems.num_errors == 3
+    assert dems.num_detectors == 4
+    assert dems.num_observables == 2
 
-    dem_arrays = decoders.DetectorErrorModelArrays.from_arrays(
+    dems = decoders.DetectorErrorModelArrays.from_arrays(
         np.array([[1, 0, 1], [1, 1, 1]]), np.array([[1, 0, 1]]), np.ones(3) * 0.3
     )
     dem = stim.DetectorErrorModel("""
@@ -86,5 +86,5 @@ def test_simplify() -> None:
         error(0.42) D0 D1 L0
         error(0.3) D1
     """)
-    assert dem == dem_arrays.to_detector_error_model()
-    assert simplified_dem == dem_arrays.simplify().to_detector_error_model()
+    assert dem == dems.to_detector_error_model()
+    assert simplified_dem == dems.simplify().to_detector_error_model()

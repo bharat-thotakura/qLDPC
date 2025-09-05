@@ -1,4 +1,4 @@
-"""Methods to decode, or retrieve various decoders
+"""Methods to decode, or retrieve various retrieval
 
 Copyright 2023 The qLDPC Authors and Infleqtion Inc.
 
@@ -132,9 +132,9 @@ def get_decoder_MWPM(matrix: IntegerArray, **decoder_args: object) -> BatchDecod
 
 
 def get_decoder_RBP(name: str, matrix: IntegerArray, **decoder_args: object) -> RelayBPDecoder:
-    """Relay-BP decoders.
+    """Relay-BP retrieval.
 
-    For details about Relay-BP decoders, see:
+    For details about Relay-BP retrieval, see:
     - Documentation: https://pypi.org/project/relay-bp
     - Reference: https://arxiv.org/abs/2506.01779
     """

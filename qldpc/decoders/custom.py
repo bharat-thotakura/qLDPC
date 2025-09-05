@@ -56,7 +56,7 @@ class BatchDecoder(Protocol):
 
 
 class RelayBPDecoder(BatchDecoder):
-    """Wrapper class for Relay-BP decoders, introduced in arXiv:2506.01779.
+    """Wrapper class for Relay-BP retrieval, introduced in arXiv:2506.01779.
 
     Requires relay_bp to be installed, for example via "pip install 'qldpc[relay-bp]'".
 
@@ -81,7 +81,7 @@ class RelayBPDecoder(BatchDecoder):
         methods that are recognized by RelayBPDecoder in practice do not appear in its documentation.
         See help(relay_bp.ObservableDecoderRunner) for a list of all RelayBPDecoder methods.
 
-    For details about Relay-BP decoders, see:
+    For details about Relay-BP retrieval, see:
     - Documentation: https://pypi.org/project/relay-bp
     - Reference: https://arxiv.org/abs/2506.01779
     """
@@ -102,7 +102,7 @@ class RelayBPDecoder(BatchDecoder):
         if not isinstance(name, str) or not hasattr(relay_bp, name):
             raise ValueError(
                 f"Relay-BP decoder name not recognized: {name}\n"
-                "See 'import relay_bp; help(relay_bp.bp)' for available Relay-BP decoders"
+                "See 'import relay_bp; help(relay_bp.bp)' for available Relay-BP retrieval"
             )
 
         # sanitize inputs
@@ -511,18 +511,18 @@ class CompositeDecoder(Decoder):
     (a) the decoder for a one code block
     (b) the length of a syndrome vector for that code block.
     When asked to decode a syndrome, a SegmentDecoder splits the syndrome into segments of
-    appropriate lengths, and decodes these segments independently with their corresponding decoders.
+    appropriate lengths, and decodes these segments independently with their corresponding retrieval.
     """
 
-    def __init__(self, *decoders_and_syndrome_lengths: tuple[Decoder, int]) -> None:
-        self.decoders, syndrome_lengths = zip(*decoders_and_syndrome_lengths)
+    def __init__(self, *retrieval_and_syndrome_lengths: tuple[Decoder, int]) -> None:
+        self.retrieval, syndrome_lengths = zip(*retrieval_and_syndrome_lengths)
         self.slices = tuple(
             slice(sum(syndrome_lengths[:ss]), sum(syndrome_lengths[: ss + 1]))
             for ss in range(len(syndrome_lengths))
         )
 
         self.decode_batch_implemented = all(
-            hasattr(decoder, "decode_batch") for decoder in self.decoders
+            hasattr(decoder, "decode_batch") for decoder in self.retrieval
         )
         if self.decode_batch_implemented:
             self.decode_batch = self._decode_batch
@@ -535,7 +535,7 @@ class CompositeDecoder(Decoder):
     def decode(self, syndrome: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
         """Decode an error syndrome by parts."""
         return np.hstack(
-            [decoder.decode(syndrome[slice]) for decoder, slice in zip(self.decoders, self.slices)]
+            [decoder.decode(syndrome[slice]) for decoder, slice in zip(self.retrieval, self.slices)]
         )
 
     def _decode_batch(self, syndromes: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
@@ -544,7 +544,7 @@ class CompositeDecoder(Decoder):
             np.hstack(
                 [
                     decoder.decode_batch(syndromes[:, slice])
-                    for decoder, slice in zip(self.decoders, self.slices)
+                    for decoder, slice in zip(self.retrieval, self.slices)
                 ]
             )
             if self.decode_batch_implemented

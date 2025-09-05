@@ -1,4 +1,4 @@
-"""Unit tests for sinter_decoders.py
+"""Unit tests for sinter.py
 
 Copyright 2023 The qLDPC Authors and Infleqtion Inc.
 
@@ -21,7 +21,7 @@ import stim
 from qldpc import decoders
 
 
-def test_sinter_decoder() -> None:
+def test_sinter() -> None:
     """Try out a simple decoding problem."""
     dem = stim.DetectorErrorModel("""
         error(0.0001) D0
