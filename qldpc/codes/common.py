@@ -830,6 +830,20 @@ class QuditCode(AbstractCode):
         field = getattr(graph, "field", galois.GF(DEFAULT_FIELD_ORDER))
         return field(matrix.reshape(num_checks, 2 * num_qudits))
 
+    def to_css(self) -> CSSCode:
+        """Try to convert this QuditCode into a CSSCode.  Throw an error if we fail."""
+        matrix_x = self.matrix[:, : len(self)]
+        matrix_z = self.matrix[:, len(self) :]
+        xs = np.any(matrix_x, axis=1)
+        zs = np.any(matrix_z, axis=1)
+        if np.any(xs & zs):
+            raise ValueError(
+                "Failed to convert a QuditCode into a CSSCode."
+                "\nSome parity checks have both X and Z support:"
+                f"\n{self}"
+            )
+        return CSSCode(matrix_x[xs], matrix_z[zs], is_subsystem_code=self._is_subsystem_code)
+
     def get_syndrome_subgraphs(self, *, strategy: str = "smallest_last") -> tuple[nx.DiGraph, ...]:
         """Sequence of subgraphs of the Tanner graph that induces a syndrome extraction sequence.
 
