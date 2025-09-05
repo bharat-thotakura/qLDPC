@@ -44,27 +44,16 @@ class DetectorErrorModelArrays:
     observable_flip_matrix: scipy.sparse.csc_matrix  # maps errors to observable flips
     error_probs: npt.NDArray[np.float64]  # probability of occurrence for each error
 
-    def __init__(self, dem: stim.DetectorErrorModel) -> None:
+    def __init__(self, dem: stim.DetectorErrorModel, *, simplify: bool = True) -> None:
         """Initialize from a stim.DetectorErrorModel."""
-        errors = DetectorErrorModelArrays.get_merged_circuit_errors(dem)
-
-        # initialize empty arrays
-        detector_flip_matrix = scipy.sparse.dok_matrix(
-            (dem.num_detectors, len(errors)), dtype=np.uint8
+        errors = DetectorErrorModelArrays.get_circuit_errors(dem)
+        if simplify:
+            errors = DetectorErrorModelArrays.get_merged_circuit_errors(errors)
+        self.detector_flip_matrix, self.observable_flip_matrix, self.error_probs = (
+            DetectorErrorModelArrays.get_arrays_from_errors(
+                errors, dem.num_detectors, dem.num_observables
+            )
         )
-        observable_flip_matrix = scipy.sparse.dok_matrix(
-            (dem.num_observables, len(errors)), dtype=np.uint8
-        )
-        self.error_probs = np.zeros(len(errors), dtype=float)
-
-        # iterate over and account for all circuit errors
-        for error_index, ((detector_ids, observable_ids), probability) in enumerate(errors.items()):
-            detector_flip_matrix[list(detector_ids), error_index] = 1
-            observable_flip_matrix[list(observable_ids), error_index] = 1
-            self.error_probs[error_index] = probability
-
-        self.detector_flip_matrix = detector_flip_matrix.tocsc()
-        self.observable_flip_matrix = observable_flip_matrix.tocsc()
 
     @staticmethod
     def from_arrays(
@@ -95,23 +84,20 @@ class DetectorErrorModelArrays:
         return self.observable_flip_matrix.shape[0]
 
     @staticmethod
-    def get_merged_circuit_errors(
+    def get_circuit_errors(
         dem: stim.DetectorErrorModel,
-    ) -> dict[tuple[frozenset[int], frozenset[int]], float]:
-        """Organize and merge circuit errors in a stim.DetectorErrorModel.
+    ) -> list[tuple[frozenset[int], frozenset[int], float]]:
+        """Collect all circuit errors in a stim.DetectorErrorModel.
 
         Each circuit error is identified by:
         - a set of detectors that are flipped,
         - a set of observables that are flipped, and
         - a probability of occurrence.
 
-        This method organizes circuit errors into a dictionary that looks like
-            {(detector_ids, observable_ids): probability}}.
-        Circuit errors that flip the same set of detectors and observables are merged.
+        If a detector or observable appears multiple times in an error, its occurrences are reduced
+        to the original value mod 2.
         """
-        # Collect all circuit errors in the stim.DetectorErrorModel, accounting for the possibility
-        # of indistinguishable errors that flip the same sets of detectors and observables.
-        errors = collections.defaultdict(list)
+        errors = []
         for instruction in dem.flattened():
             if instruction.type == "error":
                 probability = instruction.args_copy()[0]
@@ -122,15 +108,47 @@ class DetectorErrorModelArrays:
                 observables = _values_that_occur_an_odd_number_of_times(
                     [target.val for target in targets if target.is_logical_observable_id()]
                 )
-                if (detectors or observables) and probability:
-                    errors[detectors, observables].append(probability)
+            errors.append((detectors, observables, probability))
+        return errors
 
-        # Combine circuit errors to obtain a single probability of occurrence for each set of flipped
-        # detectors and observables.
-        return {
-            detectors_observables: _probability_of_an_odd_number_of_events(probabilities)
-            for detectors_observables, probabilities in errors.items()
-        }
+    @staticmethod
+    def get_merged_circuit_errors(
+        errors: list[tuple[frozenset[int], frozenset[int], float]],
+    ) -> list[tuple[frozenset[int], frozenset[int], float]]:
+        """Merge circuit errors that flip the same detectors and observables."""
+        # organize errors by the detectors and observables that they flip
+        merged_errors = collections.defaultdict(list)
+        for detector_ids, observable_ids, probability in errors:
+            if (detector_ids or observable_ids) and probability:
+                merged_errors[detector_ids, observable_ids].append(probability)
+
+        # combine the probabilities of occurrence for equivalent error mechanisms
+        return [
+            (detectors, observables, _probability_of_an_odd_number_of_events(probabilities))
+            for (detectors, observables), probabilities in merged_errors.items()
+        ]
+
+    @staticmethod
+    def get_arrays_from_errors(
+        errors: list[tuple[frozenset[int], frozenset[int], float]],
+        num_detectors: int,
+        num_observables: int,
+    ) -> tuple[scipy.sparse.csc_matrix, scipy.sparse.csc_matrix, npt.NDArray[np.float64]]:
+        """Convert circuit errors into DetectorErrorModelArrays data."""
+        # initialize empty arrays
+        detector_flip_matrix = scipy.sparse.dok_matrix((num_detectors, len(errors)), dtype=np.uint8)
+        observable_flip_matrix = scipy.sparse.dok_matrix(
+            (num_observables, len(errors)), dtype=np.uint8
+        )
+        error_probs = np.zeros(len(errors), dtype=float)
+
+        # iterate over and account for all circuit errors
+        for error_index, (detector_ids, observable_ids, probability) in enumerate(errors):
+            detector_flip_matrix[list(detector_ids), error_index] = 1
+            observable_flip_matrix[list(observable_ids), error_index] = 1
+            error_probs[error_index] = probability
+
+        return detector_flip_matrix.tocsc(), observable_flip_matrix.tocsc(), error_probs
 
     def to_detector_error_model(self) -> stim.DetectorErrorModel:
         """Convert this object into a stim.DetectorErrorModel."""

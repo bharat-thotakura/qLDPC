@@ -74,12 +74,14 @@ class SinterDecoder(sinter.Decoder):
                 self.priors_arg = "weights"
                 self.log_likelihood_priors = True
 
-    def compile_decoder_for_dem(self, dem: stim.DetectorErrorModel) -> CompiledSinterDecoder:
+    def compile_decoder_for_dem(
+        self, dem: stim.DetectorErrorModel, *, simplify: bool = True
+    ) -> CompiledSinterDecoder:
         """Creates a decoder preconfigured for the given detector error model.
 
         See help(sinter.Decoder) for additional information.
         """
-        dem_arrays = DetectorErrorModelArrays(dem)
+        dem_arrays = DetectorErrorModelArrays(dem, simplify=simplify)
         decoder = self.get_configured_decoder(dem_arrays)
         return CompiledSinterDecoder(dem_arrays, decoder)
 
@@ -212,13 +214,13 @@ class CompositeSinterDecoder(SinterDecoder):
         )
 
     def compile_decoder_for_dem(
-        self, dem: stim.DetectorErrorModel
+        self, dem: stim.DetectorErrorModel, *, simplify: bool = True
     ) -> CompiledCompositeSinterDecoder:
         """Creates a decoder preconfigured for the given detector error model.
 
         See help(sinter.Decoder) for additional information.
         """
-        dem_arrays = DetectorErrorModelArrays(dem)
+        dem_arrays = DetectorErrorModelArrays(dem, simplify=simplify)
         segment_dems = [
             DetectorErrorModelArrays.from_arrays(
                 dem_arrays.detector_flip_matrix[detectors, :],

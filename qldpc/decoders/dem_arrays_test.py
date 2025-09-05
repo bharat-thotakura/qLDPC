@@ -68,7 +68,7 @@ def test_simplify() -> None:
         error(0.006) D0 D3
         error(0.005) L1
     """)
-    dem_arrays = decoders.DetectorErrorModelArrays(dem)
+    dem_arrays = decoders.DetectorErrorModelArrays(dem, simplify=True)
     assert simplified_dem.approx_equals(dem_arrays.to_detector_error_model(), atol=1e-4)
     assert dem_arrays.num_errors == 3
     assert dem_arrays.num_detectors == 4
