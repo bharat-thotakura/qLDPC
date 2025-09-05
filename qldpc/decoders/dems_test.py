@@ -35,11 +35,7 @@ def test_initialization() -> None:
     assert dems.num_detectors == 3
     assert dems.num_observables == 2
 
-    other_dems = decoders.DetectorErrorModelArrays.from_arrays(
-        dems.detector_flip_matrix,
-        dems.observable_flip_matrix,
-        dems.error_probs,
-    )
+    other_dems = decoders.DetectorErrorModelArrays.from_arrays(*dems.get_arrays())
     assert np.allclose(
         other_dems.detector_flip_matrix.todense(), dems.detector_flip_matrix.todense()
     )

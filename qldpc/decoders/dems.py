@@ -55,6 +55,18 @@ class DetectorErrorModelArrays:
             )
         )
 
+    def get_arrays(
+        self,
+    ) -> tuple[scipy.sparse.csc_matrix, scipy.sparse.csc_matrix, npt.NDArray[np.float64]]:
+        """The arrays of this DetectorErrorModelArrays.
+
+        Returns:
+            detector_flip_matrix: a binary matrix that maps circuit errors to detector flips.
+            observable_flip_matrix: a binary matrix that maps circuit errors to observable flips.
+            error_probs: an array of probabilities of occurrence for each circuit error.
+        """
+        return self.detector_flip_matrix, self.observable_flip_matrix, self.error_probs
+
     @staticmethod
     def from_arrays(
         detector_flip_matrix: scipy.sparse.csc_matrix | npt.NDArray[np.float64],
