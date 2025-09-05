@@ -153,8 +153,8 @@ class DetectorErrorModelArrays:
     def to_detector_error_model(self) -> stim.DetectorErrorModel:
         """Convert this object into a stim.DetectorErrorModel."""
         dem = stim.DetectorErrorModel()
-        for prob, detector_vec, observable_vec in zip(
-            self.error_probs, self.detector_flip_matrix.T, self.observable_flip_matrix.T
+        for detector_vec, observable_vec, prob in zip(
+            self.detector_flip_matrix.T, self.observable_flip_matrix.T, self.error_probs
         ):
             detectors = " ".join([f"D{dd}" for dd in sorted(detector_vec.nonzero()[1])])
             observables = " ".join([f"L{dd}" for dd in sorted(observable_vec.nonzero()[1])])
@@ -163,7 +163,7 @@ class DetectorErrorModelArrays:
 
     def simplify(self) -> DetectorErrorModelArrays:
         """Simplify this DetectorErrorModelArrays object by merging errors."""
-        return DetectorErrorModelArrays(self.to_detector_error_model())
+        return DetectorErrorModelArrays(self.to_detector_error_model(), simplify=True)
 
 
 def _values_that_occur_an_odd_number_of_times(items: Collection[int]) -> frozenset[int]:
