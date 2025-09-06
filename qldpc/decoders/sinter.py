@@ -141,7 +141,7 @@ class CompiledSinterDecoder(sinter.CompiledDecoder):
                 )
         return np.asarray(observable_flips, dtype=np.uint8)
 
-    def packbits(self, data: npt.NDArray[np.uint8], axis: int = 1) -> npt.NDArray[np.uint8]:
+    def packbits(self, data: npt.NDArray[np.uint8], axis: int = -1) -> npt.NDArray[np.uint8]:
         """Bit-pack the data along an axis.
 
         Working with bit-packed data is more memory and compute-efficient, which is why Sinter
@@ -150,7 +150,7 @@ class CompiledSinterDecoder(sinter.CompiledDecoder):
         return np.packbits(np.asarray(data, dtype=np.uint8), bitorder="little", axis=axis)
 
     def unpack_detection_event_data(
-        self, bit_packed_detection_event_data: npt.NDArray[np.uint8], axis: int = 1
+        self, bit_packed_detection_event_data: npt.NDArray[np.uint8], axis: int = -1
     ) -> npt.NDArray[np.uint8]:
         """Unpack the bit-packed data along an axis.
 
