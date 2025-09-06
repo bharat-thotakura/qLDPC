@@ -20,9 +20,7 @@ from __future__ import annotations
 import collections
 import copy
 import dataclasses
-import functools
 import itertools
-import operator
 from collections.abc import Hashable, Iterator, Sequence
 from typing import Self
 
@@ -125,7 +123,7 @@ class Record:
 
     def get_events(self, *keys: Hashable) -> list[int]:
         """The events associated with a key."""
-        return functools.reduce(operator.add, (self.key_to_events.get(key, []) for key in keys))
+        return [event for key in keys for event in self.key_to_events.get(key, [])]
 
     def append(self, record: Record | dict[Hashable, list[int]], repeat: int = 1) -> None:
         """Append the given record to this one.
