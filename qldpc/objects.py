@@ -51,6 +51,16 @@ class Pauli(enum.Enum):
         """Hadamard-transform this Pauli operator."""
         return Pauli(self.value[::-1])
 
+    def swap_xz(self) -> PauliXZ:
+        """Convert between Pauli.X and Pauli.Z, promising a PauliXZ return type (or an error)."""
+        if self is Pauli.X:
+            return Pauli.Z
+        if self is Pauli.Z:
+            return Pauli.X
+        raise ValueError(
+            f"Pauli.dual_xz only converts between Pauli.X and Pauli.Z (provided: {self})"
+        )
+
     def __str__(self) -> str:
         if self is Pauli.I:
             return "I"

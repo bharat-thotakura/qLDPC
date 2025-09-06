@@ -31,10 +31,12 @@ def test_pauli() -> None:
     with pytest.raises(ValueError, match="Invalid Pauli operator"):
         objects.Pauli.from_string("Q")
 
-    assert ~objects.Pauli.Z == objects.Pauli.X
-    assert ~objects.Pauli.X == objects.Pauli.Z
+    assert ~objects.Pauli.Z == objects.Pauli.Z.swap_xz() == objects.Pauli.X
+    assert ~objects.Pauli.X == objects.Pauli.X.swap_xz() == objects.Pauli.Z
     assert ~objects.Pauli.Y == objects.Pauli.Y
     assert ~objects.Pauli.I == objects.Pauli.I
+    with pytest.raises(ValueError, match="Pauli.X and Pauli.Z"):
+        objects.Pauli.Y.swap_xz()
 
     paulis = [objects.Pauli.I, objects.Pauli.Z, objects.Pauli.X, objects.Pauli.Y]
     table = [[paulis.index(pp * qq) for qq in paulis] for pp in paulis]

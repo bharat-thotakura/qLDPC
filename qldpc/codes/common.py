@@ -2502,8 +2502,8 @@ class CSSCode(QuditCode):
         assert 0 <= logical_index < self.dimension
 
         # effective check matrix = syndromes and dual-pauli logical operators
-        code = self.get_code(~pauli)  # type:ignore[arg-type]
-        dual_logical_ops = self.get_logical_ops(~pauli)  # type:ignore[arg-type]
+        code = self.get_code(pauli.swap_xz())
+        dual_logical_ops = self.get_logical_ops(pauli.swap_xz())
         effective_check_matrix = np.vstack([code.matrix, dual_logical_ops])
         dual_op_index = code.num_checks + logical_index
 
