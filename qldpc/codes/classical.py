@@ -140,6 +140,11 @@ class BCHCode(ClassicalCode):
 class ReedMullerCode(ClassicalCode):
     """Classical Reed-Muller code.
 
+    A Reed-Muller code with order r and size m, denoted RM(r, m), has code parameters
+        [2**m, k, 2**(m-r)]
+    where
+        k = sum_(k = 0)^r (m choose j).
+
     References:
     - https://errorcorrectionzoo.org/c/reed_muller
     - https://feog.github.io/10-coding.pdf
