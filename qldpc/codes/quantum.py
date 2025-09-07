@@ -85,8 +85,8 @@ class QuantumHammingCode(CSSCode):
     - https://errorcorrectionzoo.org/c/quantum_hamming_css
     """
 
-    def __init__(self, rank: int, field: int | None = None) -> None:
-        code = HammingCode(rank, field)
+    def __init__(self, size: int, field: int | None = None) -> None:
+        code = HammingCode(size, field)
         super().__init__(code, code, is_subsystem_code=False)
         self._distance_x = self._distance_z = 3
 
@@ -101,7 +101,7 @@ class SteaneCode(QuantumHammingCode):
     """
 
     def __init__(self) -> None:
-        super().__init__(rank=3)
+        super().__init__(size=3)
 
 
 class IcebergCode(CSSCode):
