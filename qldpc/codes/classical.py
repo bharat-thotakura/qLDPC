@@ -59,26 +59,31 @@ class RingCode(ClassicalCode):
 
 
 class HammingCode(ClassicalCode):
-    """Classical Hamming code."""
+    """Classical Hamming code.
 
-    def __init__(self, rank: int, field: int | None = None) -> None:
+    When working over the binary field (0s an 1s), the parity check matrix of the HammingCode is
+    built by stacking together (as columns) all nonzero bitstrings.  More generally, the parity
+    check matrix is built from a maximal set of linearly independent nonzero vectors over a finite
+    field; equivalently, from all vectors whose first nonzero element is a 1.
+    """
+
+    def __init__(self, size: int, field: int | None = None) -> None:
         """Construct a Hamming code of a given rank."""
         self._distance = 3
         self._field = galois.GF(field or DEFAULT_FIELD_ORDER)
         if self.field.order == 2:
-            # parity check matrix: columns = all nonzero bitstrings
-            bitstrings = list(itertools.product([0, 1], repeat=rank))
+            # collect all nonzero bitstrings
+            bitstrings = list(itertools.product([0, 1], repeat=size))
             self._matrix = self.field(bitstrings[1:]).T
 
         else:
-            # More generally, columns = [maximal set of linearly independent strings], so collect
-            # together all strings whose first nonzero element is a 1.
-            strings = [
+            # collect all nonzero vectors whose first nonzero element is a 1
+            vectors = [
                 (0,) * top_row + (1,) + rest
-                for top_row in range(rank - 1, -1, -1)
-                for rest in itertools.product(range(self.field.order), repeat=rank - top_row - 1)
+                for top_row in range(size - 1, -1, -1)
+                for rest in itertools.product(range(self.field.order), repeat=size - top_row - 1)
             ]
-            self._matrix = self.field(strings).T
+            self._matrix = self.field(vectors).T
 
         self._dimension = len(self) - len(self._matrix)
         self._distance = 3
@@ -87,12 +92,12 @@ class HammingCode(ClassicalCode):
 class ExtendedHammingCode(ClassicalCode):
     """Classical extended Hamming code: the ordinary Hamming code with an extra parity bit.
 
-    The extended Hamming code of rank r is also equal to ReedMullerCode(r-2, r).
+    The extended Hamming code of size m is also equal to ReedMullerCode(m - 2, m).
     """
 
-    def __init__(self, rank: int) -> None:
+    def __init__(self, size: int) -> None:
         """Construct an extended Hamming code of a given rank."""
-        matrix: npt.NDArray[np.int_] = HammingCode(rank).matrix
+        matrix: npt.NDArray[np.int_] = HammingCode(size).matrix
         matrix = np.column_stack([np.zeros(matrix.shape[0], dtype=int), matrix])
         matrix = np.vstack([np.ones(matrix.shape[1], dtype=int), matrix])
         matrix[0] += matrix[1]
@@ -100,41 +105,6 @@ class ExtendedHammingCode(ClassicalCode):
 
         self._dimension = len(self) - len(self._matrix)
         self._distance = 4
-
-
-class ReedSolomonCode(ClassicalCode):
-    """Classical Reed-Solomon code.
-
-    Source: https://mhostetter.github.io/galois/latest/api/galois.ReedSolomon
-    References:
-    - https://errorcorrectionzoo.org/c/reed_solomon
-    - https://www.cs.cmu.edu/~venkatg/teaching/codingtheory/notes/notes6.pdf
-    """
-
-    def __init__(self, bits: int, dimension: int) -> None:
-        super().__init__(galois.ReedSolomon(bits, dimension).H)
-        self._dimension = dimension
-
-
-class BCHCode(ClassicalCode):
-    """Classical BCH (Bose-Chaudhuri-Hocquenghem) code.
-
-    Source: https://mhostetter.github.io/galois/latest/api/galois.BCH
-    References:
-    - https://errorcorrectionzoo.org/c/bch
-    - https://www.cs.cmu.edu/~venkatg/teaching/codingtheory/notes/notes6.pdf
-    """
-
-    def __init__(self, length: int, dimension: int, field: int | None = None) -> None:
-        field = field or DEFAULT_FIELD_ORDER
-        length_in_base = np.base_repr(length, base=field)
-        if not length_in_base == str(field - 1) * len(length_in_base):
-            raise ValueError(
-                f"BCH codes over F_{field} are only defined for block lengths {field}^m - 1 with"
-                " integer m."
-            )
-        super().__init__(galois.BCH(length, dimension, field=galois.GF(field)).H)
-        self._dimension = dimension
 
 
 class ReedMullerCode(ClassicalCode):
@@ -184,6 +154,41 @@ class ReedMullerCode(ClassicalCode):
                 "Reed-Muller code R(r,m) must have m >= 0 and 0 <= r <= m\n"
                 + f"Provided: (r,m) = ({order},{size})"
             )
+
+
+class ReedSolomonCode(ClassicalCode):
+    """Classical Reed-Solomon code.
+
+    Source: https://mhostetter.github.io/galois/latest/api/galois.ReedSolomon
+    References:
+    - https://errorcorrectionzoo.org/c/reed_solomon
+    - https://www.cs.cmu.edu/~venkatg/teaching/codingtheory/notes/notes6.pdf
+    """
+
+    def __init__(self, bits: int, dimension: int) -> None:
+        super().__init__(galois.ReedSolomon(bits, dimension).H)
+        self._dimension = dimension
+
+
+class BCHCode(ClassicalCode):
+    """Classical BCH (Bose-Chaudhuri-Hocquenghem) code.
+
+    Source: https://mhostetter.github.io/galois/latest/api/galois.BCH
+    References:
+    - https://errorcorrectionzoo.org/c/bch
+    - https://www.cs.cmu.edu/~venkatg/teaching/codingtheory/notes/notes6.pdf
+    """
+
+    def __init__(self, length: int, dimension: int, field: int | None = None) -> None:
+        field = field or DEFAULT_FIELD_ORDER
+        length_in_base = np.base_repr(length, base=field)
+        if not length_in_base == str(field - 1) * len(length_in_base):
+            raise ValueError(
+                f"BCH codes over F_{field} are only defined for block lengths {field}^m - 1 with"
+                " integer m."
+            )
+        super().__init__(galois.BCH(length, dimension, field=galois.GF(field)).H)
+        self._dimension = dimension
 
 
 class SimplexCode(ClassicalCode):
