@@ -159,8 +159,6 @@ class C6Code(CSSCode):
         super().__init__(checks, checks, is_subsystem_code=False)
         logical_ops_xz = scipy.linalg.block_diag([1, 1, 1], [1, 1, 1])
         self.set_logical_ops_xz(logical_ops_xz, logical_ops_xz)
-        self._dimension = 2
-        self._distance_x = self._distance_z = 2
 
 
 ####################################################################################################
