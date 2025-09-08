@@ -72,11 +72,11 @@ def test_constructions_classical(pytestconfig: pytest.Config) -> None:
     assert codes.ClassicalCode.equiv(code, codes.ClassicalCode.from_generator(code.generator))
 
     # puncture a code
-    assert codes.ClassicalCode.from_generator(code.generator[:, 1:]) == code.puncture(0)
+    assert codes.ClassicalCode.from_generator(code.generator[:, 1:]) == code.punctured(0)
 
     # shortening a repetition code yields a trivial code
     code = codes.RepetitionCode(3)
-    assert np.array_equal(list(code.shorten(0).iter_words()), [[0, 0]])
+    assert np.array_equal(list(code.shortened(0).iter_words()), [[0, 0]])
 
     # stack two codes
     code_a = codes.ClassicalCode.random(5, 3, field=3, seed=np.random.randint(2**32))

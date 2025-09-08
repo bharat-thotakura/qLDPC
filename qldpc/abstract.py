@@ -705,7 +705,7 @@ class Element(RingMember):  # pragma: no cover
     """Deprecated alias for RingMember."""
 
     def __getattribute__(self, name: str) -> Callable[..., typing.Any]:
-        warnings.warn(f"{Element} is deprecated; use {RingMember} instead")
+        warnings.warn(f"{Element} is DEPRECATED; use {RingMember} instead")
         return super().__getattribute__(name)
 
 
@@ -1076,7 +1076,7 @@ class Protograph(RingArray):  # pragma: no cover
     """Deprecated alias for RingArray."""
 
     def __getattribute__(self, name: str) -> Callable[..., typing.Any]:
-        warnings.warn(f"{Protograph} is deprecated; use {RingArray} instead")
+        warnings.warn(f"{Protograph} is DEPRECATED; use {RingArray} instead")
         return super().__getattribute__(name)
 
 
