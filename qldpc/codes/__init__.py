@@ -39,6 +39,7 @@ from .quantum import (
     SteaneCode,
     SurfaceCode,
     TBCode,
+    TetrahedralCode,
     ToricCode,
 )
 
@@ -75,6 +76,7 @@ __all__ = [
     "SteaneCode",
     "SurfaceCode",
     "TBCode",
+    "TetrahedralCode",
     "ToricCode",
     "get_distance_classical",
     "get_distance_quantum",

@@ -38,7 +38,14 @@ from qldpc.abstract import DEFAULT_FIELD_ORDER
 from qldpc.math import first_nonzero_cols
 from qldpc.objects import CayleyComplex, ChainComplex, Node, Pauli, PauliXZ, QuditPauli
 
-from .classical import HammingCode, RepetitionCode, RingCode, SimplexCode, TannerCode
+from .classical import (
+    HammingCode,
+    ReedMullerCode,
+    RepetitionCode,
+    RingCode,
+    SimplexCode,
+    TannerCode,
+)
 from .common import ClassicalCode, CSSCode, QuditCode
 
 
@@ -102,6 +109,93 @@ class SteaneCode(QuantumHammingCode):
 
     def __init__(self) -> None:
         super().__init__(size=3)
+
+
+class TetrahedralCode(CSSCode):
+    """Smallest quantum error-correcting CSS code with a transversal non-Clifford (T) gate.
+
+    Also:
+    - The smallest quantum error-correcting 3-D color code.
+    - Often referred to as the [15, 1, 3] quantum Reed-Muller code.
+
+    References:
+    - https://arxiv.org/abs/1403.2734
+    - https://arxiv.org/abs/2409.13465
+    - https://errorcorrectionzoo.org/c/stab_15_1_3
+    """
+
+    def __init__(self, *, algebraic: bool = False) -> None:
+        """Construct an instance of the [15, 1, 3] tetrahedral code.
+
+        Algebraically, a TetrahedralCode is a CSSCode built out of punctured Reed-Muller codes.
+        Geometrically, a TetrahedralCode can be visualized with a tetrahedron (triangular pyramid).
+        Consider a tessellation of a tetrahedron into four identical polyhedra, or 3-cells, where
+        each polyhedron is the convex hull of (a) a vertex of the tetrahedron, (b) the centers of
+        the edges and faces incident to that vextex, and (c) the centroid of the tetrahedron.
+        Qubits live on the vertices of these polyhedra.  The stabilizers of the TetrahedralCode can
+        be defined as follows:
+        - Every 3-cell (polyhedron) is associated with an X-type stabilizer.
+        - Every 2-cell (face of a polyhedron) is associated with a Z-type stabilizer.
+
+        A TetrahedralCode encodes one logical qubit.  The logical X and Z operators can be defined,
+        respectively, on any face and edge of the tetrahedron.
+
+        See Figure 2b of https://arxiv.org/pdf/2409.13465v2 for a nice picture, but note that
+        (a) the tetrahedral code in arXiv:2409.13465 swaps all X and Z operators, and
+        (b) the TetrahedralCode defined here has a different qubit order, enforced by consistency
+            with its algebraic construction as a quantum Reed-Muller code.  The map from qubit index
+            in this code to qubit index in arXiv:2409.13465 is
+            {
+                0: 0,
+                1: 10,
+                2: 3,
+                3: 14,
+                4: 7,
+                5: 13,
+                6: 6,
+                7: 8,
+                8: 1,
+                9: 9,
+                10: 2,
+                11: 12,
+                12: 4,
+                13: 11,
+                14: 5,
+            }
+
+        Args:
+            algebraic: Choose Z-type stabilizers according to the algebraic (if True) or geometric
+                (if False) definition of the TetrahedralCode, as described above.  The remaining
+                stabilizers and logical operators are unaffected by this flag.  Default: False.
+        """
+        matrix_x = ReedMullerCode(2, 4).matrix[1:, 1:]  # or HammingCode(4).matrix
+
+        if algebraic:
+            matrix_z = ReedMullerCode(1, 4).matrix[1:, 1:]
+
+        else:
+            # use Eq. 2 of arXiv:2409.13465v2, but with permuted qubits and stabilizers
+            support_z = [
+                [0, 2, 4, 6],
+                [1, 2, 5, 6],
+                [2, 6, 10, 14],
+                [3, 4, 5, 6],
+                [4, 6, 12, 14],
+                [5, 6, 13, 14],
+                [7, 9, 11, 13],
+                [8, 10, 12, 14],
+                [9, 10, 13, 14],
+                [11, 12, 13, 14],
+            ]
+            matrix_z = np.zeros((len(support_z), matrix_x.shape[1]), dtype=int)
+            for row, support in enumerate(support_z):
+                matrix_z[row, support] = 1
+
+        super().__init__(matrix_x, matrix_z, field=2, is_subsystem_code=False)
+        self.set_logical_ops_xz(
+            [[1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0]],
+            [[1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
+        )
 
 
 class IcebergCode(CSSCode):
