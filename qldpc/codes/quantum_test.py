@@ -47,7 +47,7 @@ def test_small_codes() -> None:
     assert codes.C6Code().get_code_params() == (6, 2, 2)
 
 
-def test_hamming_and_reed_muller_codes() -> None:
+def test_hamming_and_tetrahedral_codes() -> None:
     """Quantum Hamming and tetrahedral codes."""
     quantum_hamming_code = codes.QuantumHammingCode(4)
     assert quantum_hamming_code.get_code_params() == (15, 7, 3)
@@ -57,20 +57,18 @@ def test_hamming_and_reed_muller_codes() -> None:
     assert codes.CSSCode.equiv(tetrahedral_code, codes.TetrahedralCode(algebraic=True))
 
     """
-    The tetrahedral code can be obtained by gauge-fixing the quantum Hamming code.
-    We first identify the (products of) logical Z operators to "promote" to stabilizers, and then
-    concatenate the quantum Hamming code with a classial code on its Z logicals.
+    The tetrahedral code (TC) can be obtained by concatenating the quantum Hamming code (QHC) with a
+    classical code on logical X operators of the QHC.  We first decompose the logical X operator of
+    the TC into a product of logical X operators of the QHC, which can be found by checking
+    (anti-)commutation with the logical Zs of the QHC.  We then concatenate the QHC with a classical
+    code that has only this combination of QHC logical Xs as a code word.
     """
-
-    # pin logical qubits 2, 4, 5 to |0>, and build a repetition code on logical qubits 0, 1, 3, 6
-    support_z = [[2], [4], [5], [0, 1], [1, 3], [3, 6]]
-    matrix_z = np.zeros((len(support_z), quantum_hamming_code.dimension), dtype=int)
-    for row, support in enumerate(support_z):
-        matrix_z[row, support] = 1
-
+    decomposition = (
+        tetrahedral_code.get_logical_ops(Pauli.X) @ quantum_hamming_code.get_logical_ops(Pauli.Z).T
+    )
     code = codes.CSSCode.concatenate(
         quantum_hamming_code,
-        codes.CSSCode.classical(matrix_z, Pauli.Z),
+        codes.CSSCode.classical(codes.ClassicalCode.from_generator(decomposition), Pauli.Z),
         range(quantum_hamming_code.dimension),
     )
     assert codes.CSSCode.equiv(code, tetrahedral_code)
