@@ -175,7 +175,7 @@ class TetrahedralCode(CSSCode):
 
         else:
             # use Eq. 2 of arXiv:2409.13465v2, but with permuted qubits and stabilizers
-            support_z = [
+            stabilizer_support_z = [
                 [0, 2, 4, 6],
                 [1, 2, 5, 6],
                 [2, 6, 10, 14],
@@ -187,8 +187,8 @@ class TetrahedralCode(CSSCode):
                 [9, 10, 13, 14],
                 [11, 12, 13, 14],
             ]
-            matrix_z = np.zeros((len(support_z), matrix_x.shape[1]), dtype=int)
-            for row, support in enumerate(support_z):
+            matrix_z = np.zeros((len(stabilizer_support_z), matrix_x.shape[1]), dtype=int)
+            for row, support in enumerate(stabilizer_support_z):
                 matrix_z[row, support] = 1
 
         super().__init__(matrix_x, matrix_z, field=2, is_subsystem_code=False)
