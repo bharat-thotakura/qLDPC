@@ -48,7 +48,8 @@ Notable features include:
   - `QuditCode.get_distance`: method to compute the exact code distance of a `QuditCode` (i.e., the minimum weight of a nontrivial logical operator).  Includes options to compute an upper bound on code distance using [`QDistRnd`](https://docs.gap-system.org/pkg/qdistrnd/doc/chap1_mj.html) or (for CSS codes) a decoder-based method introduced in [arXiv:2308.07915](https://arxiv.org/abs/2308.07915).
   - `QuditCode.concatenate`: method to [concatenate](https://errorcorrectionzoo.org/c/quantum_concatenated) `QuditCode`s in various ways.
 - `CSSCode`: subclass of `QuditCode` for the special case of constructing a [quantum CSS code](https://errorcorrectionzoo.org/c/css) out of two mutually compatible `ClassicalCode`s.  Special cases (subclasses) with specialized constructors and helper methods include:
-  - Common codes such as the `SurfaceCode`, `ToricCode`, `SteaneCode`, `BaconShorCode`, and `FiveQubitCode`.
+  - Common codes such as the `FiveQubitCode`, `SteaneCode`, and `TetrahedralCode`.
+  - Common code families such as the `SurfaceCode`, `ToricCode`, `BaconShorCode`, and `QuantumHammingCode`.
   - `TBCode`: [two-block quantum codes](https://errorcorrectionzoo.org/c/two_block_quantum).
   - `BBCode`: [bivariate bicycle codes](https://errorcorrectionzoo.org/c/quantum_quasi_cyclic), as in [arXiv:2308.07915](https://arxiv.org/abs/2308.07915) and [arXiv:2311.16980](https://arxiv.org/abs/2311.16980).  See [`examples/bivariate_bicycle_codes.ipynb`](https://github.com/qLDPCOrg/qLDPC/blob/main/examples/bivariate_bicycle_codes.ipynb) for methods to identify...
     - toric layouts of a `BBCode`, in which the code looks like a toric code augmented by some long-distance checks, as in discussed in [arXiv:2308.07915](https://arxiv.org/abs/2308.07915), and
