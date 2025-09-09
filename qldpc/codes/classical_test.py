@@ -49,16 +49,16 @@ def test_special_codes() -> None:
 
     order, size, field = 1, 3, 2
     code = codes.ReedMullerCode(order, size, field)
+    assert (code.order, code.size) == (order, size)
     assert ~code == codes.ReedMullerCode(size - order - 1, size, field)
     assert code.dimension == len(code) - np.linalg.matrix_rank(code.matrix)
 
     with pytest.raises(ValueError, match="0 <= r <= m"):
         codes.ReedMullerCode(-1, 0)
 
-    # the extended Hamming code's parity check matrix is a super set of the ordinary Hamming code
-    assert np.array_equal(
-        codes.ExtendedHammingCode(4).matrix[1:, 1:],
-        codes.HammingCode(4).matrix,
+    # the Hamming code can be recovered by puncturing the extended Hamming code
+    assert codes.ClassicalCode.equiv(
+        codes.HammingCode(4), codes.ExtendedHammingCode(4).punctured(0)
     )
 
     # classical simplex codes

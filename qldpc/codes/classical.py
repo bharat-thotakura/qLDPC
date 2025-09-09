@@ -132,6 +132,16 @@ class ReedMullerCode(ClassicalCode):
         self._dimension = len(generator)
         self._distance = 2 ** (size - order)
 
+    @property
+    def size(self) -> int:
+        """The size parameter of this code."""
+        return self._size
+
+    @property
+    def order(self) -> int:
+        """The order parameter of this code."""
+        return self._order
+
     @staticmethod
     def get_generator(order: int, size: int) -> npt.NDArray[np.int_]:
         """Get the generator matrix for the specified Reed-Muller code."""
