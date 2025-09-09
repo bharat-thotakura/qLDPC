@@ -168,10 +168,10 @@ class TetrahedralCode(CSSCode):
                 (if False) definition of the TetrahedralCode, as described above.  The remaining
                 stabilizers and logical operators are unaffected by this flag.  Default: False.
         """
-        matrix_x = ReedMullerCode(2, 4).matrix[1:, 1:]  # or HammingCode(4).matrix
+        code_x = ReedMullerCode(2, 4).punctured(0)
 
         if algebraic:
-            matrix_z = ReedMullerCode(1, 4).matrix[1:, 1:]
+            code_z = ReedMullerCode(1, 4).punctured(0)
 
         else:
             # use Eq. 2 of arXiv:2409.13465v2, but with permuted qubits and stabilizers
@@ -187,11 +187,12 @@ class TetrahedralCode(CSSCode):
                 [9, 10, 13, 14],
                 [11, 12, 13, 14],
             ]
-            matrix_z = np.zeros((len(stabilizer_support_z), matrix_x.shape[1]), dtype=int)
+            matrix_z = np.zeros((len(stabilizer_support_z), len(code_x)), dtype=int)
             for row, support in enumerate(stabilizer_support_z):
                 matrix_z[row, support] = 1
+            code_z = ClassicalCode(matrix_z)
 
-        super().__init__(matrix_x, matrix_z, field=2, is_subsystem_code=False)
+        super().__init__(code_x, code_z, is_subsystem_code=False)
         self.set_logical_ops_xz(
             [[1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0]],
             [[1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
