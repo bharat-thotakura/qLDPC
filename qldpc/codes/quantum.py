@@ -146,20 +146,20 @@ class TetrahedralCode(CSSCode):
             with its algebraic construction as a quantum Reed-Muller code.  The map from qubit index
             in this code to qubit index in arXiv:2409.13465 is
             {
-                0: 0,
+                0: 0,                     Qubit layout for the code here:
                 1: 10,
-                2: 3,
-                3: 14,
-                4: 7,
-                5: 13,
-                6: 6,
-                7: 8,
-                8: 1,
-                9: 9,
-                10: 2,
+                2: 3,                     red
+                3: 14,                     0                           8
+                4: 7,                     / \                         / \ 
+                5: 13,                   /   \                       /   \ 
+                6: 6,                   2     4                    10     12
+                7: 8,                  / ‾‾6‾‾ \                   / ‾‾14‾ \                7
+                8: 1,                 /    |    \                 /    |    \ 
+                9: 9,                1 --- 5 --- 3               9 --- 13 -- 11            top
+                10: 2,                green  blue                                         vertex
                 11: 12,
-                12: 4,
-                13: 11,
+                12: 4,            vertices on the base     vertices in the "middle"
+                13: 11,             the tetrahedron      (edges, faces, and centroid)
                 14: 5,
             }
 
@@ -174,18 +174,22 @@ class TetrahedralCode(CSSCode):
             code_z = ReedMullerCode(1, 4).punctured(0)
 
         else:
-            # use Eq. 2 of arXiv:2409.13465v2, but with permuted qubits and stabilizers
+            # the stabilizers of Eq. 2 in arXiv:2409.13465v2, in a different order
             stabilizer_support_z = [
-                [0, 2, 4, 6],
-                [1, 2, 5, 6],
+                # red / green / blue 2-cells on the base
+                [0, 2, 4, 6],  # red
+                [1, 2, 5, 6],  # green
+                [3, 4, 5, 6],  # blue
+                # red / green / blue 2-cells on in the middle
+                [8, 10, 12, 14],  # red
+                [9, 10, 13, 14],  # green
+                [11, 12, 13, 14],  # blue
+                # 2-cells connecting the base to the middle
                 [2, 6, 10, 14],
-                [3, 4, 5, 6],
                 [4, 6, 12, 14],
                 [5, 6, 13, 14],
+                # 2-cell connecting to the top vertex
                 [7, 9, 11, 13],
-                [8, 10, 12, 14],
-                [9, 10, 13, 14],
-                [11, 12, 13, 14],
             ]
             matrix_z = np.zeros((len(stabilizer_support_z), len(code_x)), dtype=int)
             for row, support in enumerate(stabilizer_support_z):
