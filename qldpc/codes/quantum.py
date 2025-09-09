@@ -152,11 +152,11 @@ class TetrahedralCode(CSSCode):
                 3: 14,                     0                           8
                 4: 7,                     / \                         / \
                 5: 13,                   /   \                       /   \
-                6: 6,                   2     4                    10     12
-                7: 8,                  / ‾‾6‾‾ \                   / ‾‾14‾ \                7
-                8: 1,                 /    |    \                 /    |    \
-                9: 9,                1 --- 5 --- 3               9 --- 13 -- 11            top
-                10: 2,                green  blue                                         vertex
+                6: 6,                   2     4                    10     12                7
+                7: 8,                  / ‾‾6‾‾ \                   / ‾‾14‾ \
+                8: 1,                 /    |    \                 /    |    \              top
+                9: 9,                1 --- 5 --- 3               9 --- 13 -- 11           vertex
+                10: 2,                green  blue
                 11: 12,
                 12: 4,            vertices on the base     vertices in the "middle"
                 13: 11,            of the tetrahedron     (edges, faces, and centroid)
