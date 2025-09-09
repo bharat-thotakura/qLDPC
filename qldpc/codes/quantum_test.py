@@ -57,11 +57,12 @@ def test_hamming_and_tetrahedral_codes() -> None:
     assert codes.CSSCode.equiv(tetrahedral_code, codes.TetrahedralCode(algebraic=True))
 
     """
-    The tetrahedral code (TC) can be obtained by concatenating the quantum Hamming code (QHC) with a
-    classical code on logical X operators of the QHC.  We first decompose the logical X operator of
-    the TC into a product of logical X operators of the QHC, which can be found by checking
-    (anti-)commutation with the logical Zs of the QHC.  We then concatenate the QHC with a classical
-    code that has only this combination of QHC logical Xs as a code word.
+    The tetrahedral code (TC) can be constructed by concatenating the quantum Hamming code (QHC)
+    with a classical code on the logical X operators of the QHC, as we show below.  To this end, we
+    first decompose the logical X operator of the TC into a product of logical X operators of the
+    QHC, which can be found by checking (anti-)commutation with the logical Zs of the QHC.  We then
+    concatenate the QHC with a classical code that has only this combination of QHC logical Xs as a
+    code word.
     """
     decomposition = (
         tetrahedral_code.get_logical_ops(Pauli.X) @ quantum_hamming_code.get_logical_ops(Pauli.Z).T
