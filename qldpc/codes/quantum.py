@@ -180,7 +180,7 @@ class TetrahedralCode(CSSCode):
                 [0, 2, 4, 6],  # red
                 [1, 2, 5, 6],  # green
                 [3, 4, 5, 6],  # blue
-                # red / green / blue 2-cells on in the middle
+                # red / green / blue 2-cells in the middle
                 [8, 10, 12, 14],  # red
                 [9, 10, 13, 14],  # green
                 [11, 12, 13, 14],  # blue
@@ -188,7 +188,7 @@ class TetrahedralCode(CSSCode):
                 [2, 6, 10, 14],
                 [4, 6, 12, 14],
                 [5, 6, 13, 14],
-                # 2-cell connecting to the top vertex
+                # 2-cell connecting the middle to the top vertex
                 [7, 9, 11, 13],
             ]
             matrix_z = np.zeros((len(stabilizer_support_z), len(code_x)), dtype=int)
