@@ -125,7 +125,7 @@ class TetrahedralCode(CSSCode):
     """
 
     def __init__(self, *, algebraic: bool = False) -> None:
-        """Construct an instance of the [15, 1, 3] tetrahedral code.
+        r"""Construct an instance of the [15, 1, 3] tetrahedral code.
 
         Algebraically, a TetrahedralCode is a CSSCode built out of punctured Reed-Muller codes.
         Geometrically, a TetrahedralCode can be visualized with a tetrahedron (triangular pyramid).
@@ -150,11 +150,11 @@ class TetrahedralCode(CSSCode):
                 1: 10,
                 2: 3,                     red
                 3: 14,                     0                           8
-                4: 7,                     / \                         / \ 
-                5: 13,                   /   \                       /   \ 
+                4: 7,                     / \                         / \
+                5: 13,                   /   \                       /   \
                 6: 6,                   2     4                    10     12
                 7: 8,                  / ‾‾6‾‾ \                   / ‾‾14‾ \                7
-                8: 1,                 /    |    \                 /    |    \ 
+                8: 1,                 /    |    \                 /    |    \
                 9: 9,                1 --- 5 --- 3               9 --- 13 -- 11            top
                 10: 2,                green  blue                                         vertex
                 11: 12,
