@@ -159,7 +159,7 @@ class TetrahedralCode(CSSCode):
                 10: 2,                green  blue                                         vertex
                 11: 12,
                 12: 4,            vertices on the base     vertices in the "middle"
-                13: 11,             the tetrahedron      (edges, faces, and centroid)
+                13: 11,            of the tetrahedron     (edges, faces, and centroid)
                 14: 5,
             }
 
