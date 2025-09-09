@@ -1052,7 +1052,7 @@ class RingArray(npt.NDArray[np.object_]):
         )
 
         """
-        Invert (transpose the entries of the matrix to make them right-acting (that is, to
+        Invert (transpose) the entries of the matrix to make them right-acting (that is, to
         transform coefficients that are to the left of each row vector), and lift to a matrix over
         the field.
         """
