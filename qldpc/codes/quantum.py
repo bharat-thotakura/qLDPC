@@ -2008,7 +2008,7 @@ class ManyHypercubeCode(CSSCode):
     - https://errorcorrectionzoo.org/c/stab_6_4_2
     """
 
-    def __init__(self, level: int) -> None:
+    def __init__(self, level: int = 1) -> None:
         assert level >= 1
 
         code: CSSCode
