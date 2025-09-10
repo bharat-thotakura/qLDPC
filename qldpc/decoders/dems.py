@@ -120,7 +120,7 @@ class DetectorErrorModelArrays:
                 observables = _values_that_occur_an_odd_number_of_times(
                     [target.val for target in targets if target.is_logical_observable_id()]
                 )
-            errors.append((detectors, observables, probability))
+                errors.append((detectors, observables, probability))
         return errors
 
     @staticmethod
