@@ -206,16 +206,11 @@ class TetrahedralCode(CSSCode):
 class IcebergCode(CSSCode):
     """A quantum error detecting code: [n, n - 2, 2].
 
-    The n = 6 IcebergCode is the [6, 4, 2] code that is used to construct concatenated
-    many-hypercube codes.
-
     References:
     - https://errorcorrectionzoo.org/c/iceberg
-    - https://errorcorrectionzoo.org/c/stab_6_4_2
-    - https://arxiv.org/abs/2403.16054
     """
 
-    def __init__(self, size: int, *, alternative_logicals: bool = False) -> None:
+    def __init__(self, size: int) -> None:
         if not size % 2 == 0:
             raise ValueError(
                 f"The Iceberg code is only defined for even block lengths (provided: {size})"
@@ -224,15 +219,6 @@ class IcebergCode(CSSCode):
         super().__init__(checks, checks, is_subsystem_code=False)
         self._dimension = size - 2
         self._distance_x = self._distance_z = 2
-
-        if alternative_logicals and size == 6:
-            # make a specific choice of logical operators for the [6, 4, 2] code, splitting the
-            # four logical qubits into pairs with disjoint support on the physical qubits
-            sector_ops_x = [[1, 1, 0], [0, 1, 1]]
-            sector_ops_z = sector_ops_x[::-1]
-            ops_x = scipy.linalg.block_diag(sector_ops_x, sector_ops_x)
-            ops_z = scipy.linalg.block_diag(sector_ops_z, sector_ops_z)
-            self.set_logical_ops_xz(ops_x, ops_z)
 
 
 class C4Code(IcebergCode):
@@ -2012,6 +1998,40 @@ class GeneralizedSurfaceCode(CSSCode):
 
 ####################################################################################################
 # miscellaneous codes
+
+
+class ManyHypercubeCode(CSSCode):
+    """The [6**r, 4**r, 2**r] concatenated many-hypercubes code of arXiv:2403.16054.
+
+    References:
+    - https://arxiv.org/abs/2403.16054
+    - https://errorcorrectionzoo.org/c/stab_6_4_2
+    """
+
+    def __init__(self, level: int = 1) -> None:
+        assert level >= 1
+
+        code: CSSCode
+        if level == 1:
+            # construct a [6, 4, 2] Iceberg code
+            code = IcebergCode(6)
+            super().__init__(code.code_x, code.code_z, is_subsystem_code=False)
+
+            # split the four logical qubits into pairs with disjoint support on the physical qubits
+            sector_ops_x = [[1, 1, 0], [0, 1, 1]]
+            sector_ops_z = sector_ops_x[::-1]
+            ops_x = scipy.linalg.block_diag(sector_ops_x, sector_ops_x)
+            ops_z = scipy.linalg.block_diag(sector_ops_z, sector_ops_z)
+            self.set_logical_ops_xz(ops_x, ops_z)
+
+        else:
+            code = ManyHypercubeCode(1)
+            base_code = ManyHypercubeCode(1)
+            for _ in range(level - 1):
+                code = CSSCode.concatenate(code, base_code)
+            super().__init__(code.code_x, code.code_z, is_subsystem_code=False)
+            self._dimension = 4**level
+            self._distance_x = self._distance_z = 2**level
 
 
 class BaconShorCode(SHPCode):

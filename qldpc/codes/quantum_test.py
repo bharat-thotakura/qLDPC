@@ -39,7 +39,7 @@ def test_small_codes() -> None:
 
     for size in [4, 6, 8]:
         code_params = (size, size - 2, 2)
-        assert codes.IcebergCode(size, alternative_logicals=True).get_code_params() == code_params
+        assert codes.IcebergCode(size).get_code_params() == code_params
     with pytest.raises(ValueError, match="even block lengths"):
         codes.IcebergCode(3)
 
@@ -577,6 +577,13 @@ def test_generalized_surface_codes(size: int = 3) -> None:
 
     with pytest.raises(ValueError, match=">= 2"):
         codes.GeneralizedSurfaceCode(size, dim=1)
+
+
+def test_many_hypercube_code() -> None:
+    """Goto's many-hypercube code."""
+    for level in range(1, 5):
+        params = (6**level, 4**level, 2**level)
+        assert codes.ManyHypercubeCode(level).get_code_params() == params
 
 
 def test_bacon_shor_code() -> None:
