@@ -165,12 +165,21 @@ class DetectorErrorModelArrays:
     def to_detector_error_model(self) -> stim.DetectorErrorModel:
         """Convert this object into a stim.DetectorErrorModel."""
         dem = stim.DetectorErrorModel()
+
+        # add detectors and observables
+        for dd in range(self.num_detectors):
+            dem += stim.DetectorErrorModel(f"detector D{dd}")
+        for dd in range(self.num_observables):
+            dem += stim.DetectorErrorModel(f"logical_observable L{dd}")
+
+        # add errors
         for detector_vec, observable_vec, prob in zip(
             self.detector_flip_matrix.T, self.observable_flip_matrix.T, self.error_probs
         ):
             detectors = " ".join([f"D{dd}" for dd in sorted(detector_vec.nonzero()[1])])
             observables = " ".join([f"L{dd}" for dd in sorted(observable_vec.nonzero()[1])])
             dem += stim.DetectorErrorModel(f"error({prob}) {detectors} {observables}")
+
         return dem
 
     def simplify(self) -> DetectorErrorModelArrays:

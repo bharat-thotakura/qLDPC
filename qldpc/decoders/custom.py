@@ -236,7 +236,9 @@ class LookupDecoder(Decoder):
         dem: stim.DetectorErrorModel,
     ) -> Callable[[npt.NDArray[np.int_] | Sequence[int]], float]:
         """Construct a penalty function for a detector error model, penalizing unlikely errors."""
-        penalty = np.array([error.args_copy()[0] for error in dem])
+        penalty = np.array(
+            [instruction.args_copy()[0] for instruction in dem if instruction.type == "error"]
+        )
 
         def penalty_func(error: npt.NDArray[np.int_] | Sequence[int]) -> float:
             """Penalize unlikely errors."""
