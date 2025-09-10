@@ -62,7 +62,7 @@ def test_hamming_and_tetrahedral_codes() -> None:
     first decompose the logical X operator of the TC into a product of logical X operators of the
     QHC, which can be found by checking (anti-)commutation with the logical Zs of the QHC.  We then
     concatenate the QHC with a classical code that has only this combination of QHC logical Xs as a
-    code word.
+    nontrivial code word.
     """
     decomposition = (
         tetrahedral_code.get_logical_ops(Pauli.X) @ quantum_hamming_code.get_logical_ops(Pauli.Z).T
