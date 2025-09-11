@@ -97,7 +97,7 @@ class QuantumHammingCode(CSSCode):
         super().__init__(code, code, is_subsystem_code=False)
         self._distance_x = self._distance_z = 3
 
-        if size == 4 and set_logicals and set.field.order == 2:
+        if size == 4 and set_logicals and self.field.order == 2:
             """
             Make a "nice" choice of logical operators for the [15, 7, 3] quantum Hamming code.
             Fixing all but the first logical qubit to |+> recovers the TetrahedralCode.
