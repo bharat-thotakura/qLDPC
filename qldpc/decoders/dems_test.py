@@ -25,6 +25,11 @@ def test_initialization() -> None:
     """Initialize DetectorErrorModelArray objects."""
 
     dem = stim.DetectorErrorModel("""
+        detector D0
+        detector D1
+        detector D2
+        logical_observable L0
+        logical_observable L1
         error(0.001) D0
         error(0.002) D0 D1
         error(0.003) D2 L1
@@ -49,7 +54,6 @@ def test_initialization() -> None:
 def test_simplify() -> None:
     """Simplify and merge errors."""
 
-    # merge errors
     dem = stim.DetectorErrorModel("""
         error(0.001) D0 D0 D0
         error(0.002) D0 D3
@@ -60,6 +64,12 @@ def test_simplify() -> None:
         error(0) D1
     """)
     simplified_dem = stim.DetectorErrorModel("""
+        detector D0
+        detector D1
+        detector D2
+        detector D3
+        logical_observable L0
+        logical_observable L1
         error(0.004) D0
         error(0.006) D0 D3
         error(0.005) L1
@@ -74,11 +84,17 @@ def test_simplify() -> None:
         np.array([[1, 0, 1], [1, 1, 1]]), np.array([[1, 0, 1]]), np.ones(3) * 0.3
     )
     dem = stim.DetectorErrorModel("""
+        detector D0
+        detector D1
+        logical_observable L0
         error(0.3) D0 D1 L0
         error(0.3) D1
         error(0.3) D0 D1 L0
     """)
     simplified_dem = stim.DetectorErrorModel("""
+        detector D0
+        detector D1
+        logical_observable L0
         error(0.42) D0 D1 L0
         error(0.3) D1
     """)
