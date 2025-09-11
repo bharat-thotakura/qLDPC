@@ -144,6 +144,12 @@ class Record:
             )
         self.num_events += num_events_in_record * repeat
 
+    def __add__(self, other: Self) -> Self:
+        """Combine two records."""
+        record = self.copy()
+        record.append(other)
+        return record
+
 
 class MeasurementRecord(Record):
     """An record of measurements in a Stim circuit, organized by qubit index."""

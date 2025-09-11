@@ -49,7 +49,7 @@ def test_records() -> None:
     """Measurement and detector records."""
     base_record = circuits.Record({0: [0]})
     assert base_record.num_events == 1
-    base_record.append({0: [1], 2: [0]})
+    base_record = base_record + circuits.Record({0: [1], 2: [0]})
     assert base_record.num_events == 3
     base_record.append({1: [0, 1]}, repeat=3)
     assert base_record.key_to_events[1] == [3, 4, 5, 6, 7, 8]
