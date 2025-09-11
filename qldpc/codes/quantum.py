@@ -97,6 +97,9 @@ class QuantumHammingCode(CSSCode):
         super().__init__(code, code, is_subsystem_code=False)
         self._distance_x = self._distance_z = 3
 
+        if size == 4:
+            ...
+
 
 class SteaneCode(QuantumHammingCode):
     """Smallest quantum error-correcting CSS code.
@@ -143,25 +146,26 @@ class TetrahedralCode(CSSCode):
         See Figure 2b of https://arxiv.org/pdf/2409.13465v2 for a nice picture, but note that
         (a) the tetrahedral code in arXiv:2409.13465 swaps all X and Z operators, and
         (b) the TetrahedralCode defined here has a different qubit order, enforced by consistency
-            with its algebraic construction as a quantum Reed-Muller code.  The map from qubit index
-            in this code to qubit index in arXiv:2409.13465 is
-            {
-                0: 0,                     Qubit layout for the code here:
-                1: 10,
-                2: 3,                     red
-                3: 14,                     0                           8
-                4: 7,                     / \                         / \
-                5: 13,                   /   \                       /   \
-                6: 6,                   2     4                    10     12                7
-                7: 8,                  / ‾‾6‾‾ \                   / ‾‾14‾ \
-                8: 1,                 /    |    \                 /    |    \              top
-                9: 9,                1 --- 5 --- 3               9 --- 13 -- 11           vertex
-                10: 2,                green  blue
-                11: 12,
-                12: 4,            vertices on the base     vertices in the "middle"
-                13: 11,            of the tetrahedron     (edges, faces, and centroid)
-                14: 5,
-            }
+            with its algebraic construction.  Specifically qubit jj of the code here gets mapped to
+            qubit kk = qubit_map[jj] of the code in 2409.13465, where
+
+                qubit_map = [0, 10, 3, 14, 7, 13, 6, 8, 1, 9, 2, 12, 4, 11, 5].
+
+        Coloring the polyhedra described above red, green, blue, and yellow, the qubit layout for
+        the TetrahedralCode here can be visualized as follows:
+
+                                    red
+                                     0                           8
+                                    / \                         / \
+                                   /   \                       /   \
+                                  2     4                    10     12                7
+                                 / ‾‾6‾‾ \                   / ‾‾14‾ \
+                                /    |    \                 /    |    \              top
+                               1 --- 5 --- 3               9 --- 13 -- 11           vertex
+                                green  blue
+
+                            vertices on the base     vertices in the "middle"
+                             of the tetrahedron     (edges, faces, and centroid)
 
         Args:
             algebraic: Choose Z-type stabilizers according to the algebraic (if True) or geometric
