@@ -154,18 +154,18 @@ class TetrahedralCode(CSSCode):
         Coloring the polyhedra described above red, green, blue, and yellow, the qubit layout for
         the TetrahedralCode here can be visualized as follows:
 
-                                    red
-                                     0                           8
-                                    / \                         / \
-                                   /   \                       /   \
-                                  2     4                    10     12                7
-                                 / ‾‾6‾‾ \                   / ‾‾14‾ \
-                                /    |    \                 /    |    \              top
-                               1 --- 5 --- 3               9 --- 13 -- 11           vertex
-                                green  blue
+                                red
+                                 0                           8
+                                / \                         / \
+                               /   \                       /   \
+                              2     4                    10     12                7
+                             / ‾‾6‾‾ \                   / ‾‾14‾ \
+                            /    |    \                 /    |    \              top
+                           1 --- 5 --- 3               9 --- 13 -- 11           vertex
+                            green  blue
 
-                            vertices on the base     vertices in the "middle"
-                             of the tetrahedron     (edges, faces, and centroid)
+                        vertices on the base     vertices in the "middle"
+                         of the tetrahedron     (edges, faces, and centroid)
 
         Args:
             algebraic: Choose Z-type stabilizers according to the algebraic (if True) or geometric
