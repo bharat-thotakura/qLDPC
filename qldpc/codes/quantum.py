@@ -176,7 +176,7 @@ class TetrahedralCode(CSSCode):
                          / ‾‾6‾‾ \                   / ‾‾14‾ \
                         /    |    \                 /    |    \              top
                        1 --- 5 --- 3               9 --- 13 -- 11           vertex
-                        green  blue
+                        green  blue                                        (yellow)
 
                     vertices on the base     vertices in the "middle"
                      of the tetrahedron     (edges, faces, and centroid)
