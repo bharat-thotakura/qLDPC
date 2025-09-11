@@ -92,13 +92,47 @@ class QuantumHammingCode(CSSCode):
     - https://errorcorrectionzoo.org/c/quantum_hamming_css
     """
 
-    def __init__(self, size: int, field: int | None = None) -> None:
+    def __init__(self, size: int, field: int | None = None, *, set_logicals: bool = True) -> None:
         code = HammingCode(size, field)
         super().__init__(code, code, is_subsystem_code=False)
         self._distance_x = self._distance_z = 3
 
-        if size == 4:
-            ...
+        if size == 4 and set_logicals:
+            """
+            Make a "nice" choice of logical operators for the [15, 7, 3] quantum Hamming code.
+            Fixing all but the first logical qubit to |+> recovers the TetrahedralCode.
+            See the docstring of the TetrahedralCode for an explanation of the comments below.
+            """
+            support_x = [
+                # all qubits
+                range(len(self)),
+                # red / green / blue 2-cells in the middle
+                [8, 10, 12, 14],  # red
+                [9, 10, 13, 14],  # green
+                [11, 12, 13, 14],  # blue
+                # 2-cells connecting the base to the middle
+                [2, 6, 10, 14],  # red/green
+                [4, 6, 12, 14],  # red/blue
+                [5, 6, 13, 14],  # green/blue
+            ]
+            support_z = [
+                # all qubits
+                range(len(self)),
+                # 2-cells connecting the base to the middle
+                [5, 6, 13, 14],  # green/blue
+                [4, 6, 12, 14],  # red/blue
+                [2, 6, 10, 14],  # red/green
+                # red / green / blue 2-cells in the middle
+                [11, 12, 13, 14],  # blue
+                [9, 10, 13, 14],  # green
+                [8, 10, 12, 14],  # red
+            ]
+            logical_ops_x = np.zeros((len(support_x), len(self)), dtype=int)
+            logical_ops_z = np.zeros((len(support_z), len(self)), dtype=int)
+            for row in range(len(support_x)):
+                logical_ops_x[row, support_x[row]] = 1
+                logical_ops_z[row, support_z[row]] = 1
+            self.set_logical_ops_xz(logical_ops_x, logical_ops_z)
 
 
 class SteaneCode(QuantumHammingCode):
@@ -115,11 +149,50 @@ class SteaneCode(QuantumHammingCode):
 
 
 class TetrahedralCode(CSSCode):
-    """Smallest quantum error-correcting CSS code with a transversal non-Clifford (T) gate.
+    r"""Smallest quantum error-correcting CSS code with a transversal non-Clifford (T) gate.
 
     Also:
     - The smallest quantum error-correcting 3-D color code.
     - Often referred to as the [15, 1, 3] quantum Reed-Muller code.
+
+    Algebraically, a TetrahedralCode is a CSSCode built out of punctured Reed-Muller codes.
+    Geometrically, a TetrahedralCode can be visualized with a tetrahedron (triangular pyramid).
+
+    Consider a tessellation of a tetrahedron into four identical polyhedra, or 3-cells, where each
+    polyhedron is the convex hull of (a) a vertex of the tetrahedron, (b) the centers of the edges
+    and faces incident to that vertex, and (c) the centroid of the tetrahedron.  Qubits live on the
+    vertices of these polyhedra.  The stabilizers of the TetrahedralCode can be defined as follows:
+    - Every 3-cell (polyhedron) is associated with an X-type stabilizer.
+    - Every 2-cell (face of a polyhedron) is associated with a Z-type stabilizer.
+
+    Coloring the polyhedra red, green, blue, and yellow, the qubit layout for the TetrahedralCode
+    can be visualized as follows:
+
+                            red
+                             0                           8
+                            / \                         / \
+                           /   \                       /   \
+                          2     4                    10     12                7
+                         / ‾‾6‾‾ \                   / ‾‾14‾ \
+                        /    |    \                 /    |    \              top
+                       1 --- 5 --- 3               9 --- 13 -- 11           vertex
+                        green  blue
+
+                    vertices on the base     vertices in the "middle"
+                     of the tetrahedron     (edges, faces, and centroid)
+
+    The ordering of qubits is fixed by enforcing consistency between geometric and algebraic
+    constructions of the TetrahedralCode.
+
+    See also Figure 2b of https://arxiv.org/pdf/2409.13465v2 for a nice picture, but note that
+    (a) The tetrahedral code in arXiv:2409.13465 swaps all X and Z operators.
+    (b) The TetrahedralCode defined here has a different qubit order.  Specifically, qubit jj of the
+        code defined here gets mapped to qubit kk = qubit_map[jj] of the code in 2409.13465, where
+        qubit_map = [0, 10, 3, 14, 7, 13, 6, 8, 1, 9, 2, 12, 4, 11, 5].
+
+    A TetrahedralCode encodes one logical qubit.
+    - The logical X operator can be defined on any _face_ of the tetrahedron.
+    - The logical Z operator can be defined on any _edge_ of the tetrahedron.
 
     References:
     - https://arxiv.org/abs/1403.2734
@@ -128,44 +201,7 @@ class TetrahedralCode(CSSCode):
     """
 
     def __init__(self, *, algebraic: bool = False) -> None:
-        r"""Construct an instance of the [15, 1, 3] tetrahedral code.
-
-        Algebraically, a TetrahedralCode is a CSSCode built out of punctured Reed-Muller codes.
-        Geometrically, a TetrahedralCode can be visualized with a tetrahedron (triangular pyramid).
-        Consider a tessellation of a tetrahedron into four identical polyhedra, or 3-cells, where
-        each polyhedron is the convex hull of (a) a vertex of the tetrahedron, (b) the centers of
-        the edges and faces incident to that vextex, and (c) the centroid of the tetrahedron.
-        Qubits live on the vertices of these polyhedra.  The stabilizers of the TetrahedralCode can
-        be defined as follows:
-        - Every 3-cell (polyhedron) is associated with an X-type stabilizer.
-        - Every 2-cell (face of a polyhedron) is associated with a Z-type stabilizer.
-
-        A TetrahedralCode encodes one logical qubit.  The logical X and Z operators can be defined,
-        respectively, on any face and edge of the tetrahedron.
-
-        See Figure 2b of https://arxiv.org/pdf/2409.13465v2 for a nice picture, but note that
-        (a) the tetrahedral code in arXiv:2409.13465 swaps all X and Z operators, and
-        (b) the TetrahedralCode defined here has a different qubit order, enforced by consistency
-            with its algebraic construction.  Specifically qubit jj of the code here gets mapped to
-            qubit kk = qubit_map[jj] of the code in 2409.13465, where
-
-                qubit_map = [0, 10, 3, 14, 7, 13, 6, 8, 1, 9, 2, 12, 4, 11, 5].
-
-        Coloring the polyhedra described above red, green, blue, and yellow, the qubit layout for
-        the TetrahedralCode here can be visualized as follows:
-
-                                red
-                                 0                           8
-                                / \                         / \
-                               /   \                       /   \
-                              2     4                    10     12                7
-                             / ‾‾6‾‾ \                   / ‾‾14‾ \
-                            /    |    \                 /    |    \              top
-                           1 --- 5 --- 3               9 --- 13 -- 11           vertex
-                            green  blue
-
-                        vertices on the base     vertices in the "middle"
-                         of the tetrahedron     (edges, faces, and centroid)
+        """Construct an instance of the [15, 1, 3] tetrahedral code.
 
         Args:
             algebraic: Choose Z-type stabilizers according to the algebraic (if True) or geometric
@@ -189,9 +225,9 @@ class TetrahedralCode(CSSCode):
                 [9, 10, 13, 14],  # green
                 [11, 12, 13, 14],  # blue
                 # 2-cells connecting the base to the middle
-                [2, 6, 10, 14],
-                [4, 6, 12, 14],
-                [5, 6, 13, 14],
+                [2, 6, 10, 14],  # red/green
+                [4, 6, 12, 14],  # red/blue
+                [5, 6, 13, 14],  # green/blue
                 # 2-cell connecting the middle to the top vertex
                 [7, 9, 11, 13],
             ]
