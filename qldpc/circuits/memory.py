@@ -420,6 +420,7 @@ def get_observables(
     return circuit
 
 
+@restrict_to_qubits
 def get_logical_bell_prep(
     code: codes.QuditCode,
     data_qubits: Sequence[int] | None = None,
