@@ -15,18 +15,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import itertools
-from collections.abc import Collection
+from collections.abc import Collection, Sequence
 
 import numpy as np
 import stim
 
 from qldpc import codes
-from qldpc.objects import PAULIS_XZ, Node, Pauli, PauliXZ
+from qldpc.objects import Node, Pauli, PauliXZ
 
 from .bookkeeping import DetectorRecord, MeasurementRecord, QubitIDs
 from .common import get_encoding_circuit, restrict_to_qubits, with_remapped_qubits
-from .noise_model import DEFAULT_IMMUNE_OP_TAG, NoiseModel
+from .noise_model import DEFAULT_IMMUNE_OP_TAG, NoiseModel, as_noiseless_circuit
 from .syndrome_measurement import EdgeColoring, SyndromeMeasurementStrategy
 
 
@@ -165,18 +164,9 @@ def get_memory_experiment(
         if noise_model is not None:
             qec_cycle = noise_model.noisy_circuit(qec_cycle)
         else:
-            # noise will be added later, so annotate initialization and readout as noiseless
-            initialization_block = stim.CircuitRepeatBlock(
-                repeat_count=1, body=initialization, tag=DEFAULT_IMMUNE_OP_TAG
-            )
-            initialization = stim.Circuit()
-            initialization.append(initialization_block)
-
-            readout_block = stim.CircuitRepeatBlock(
-                repeat_count=1, body=readout, tag=DEFAULT_IMMUNE_OP_TAG
-            )
-            readout = stim.Circuit()
-            readout.append(readout_block)
+            # noise will be added later, so make initialization and readout noiseless
+            initialization = as_noiseless_circuit(initialization)
+            readout = as_noiseless_circuit(readout)
 
     return initialization + qec_cycle + readout
 
@@ -253,10 +243,6 @@ def _get_basis_memory_experiment_parts(
     data_ids, check_ids, _ = qubit_ids
     basis_check_ids = qubit_ids.checks_x if basis is Pauli.X else qubit_ids.checks_z
 
-    ####################
-    # INITIALIZATION
-    ####################
-
     # set coordinates for all qubits
     coordinates = stim.Circuit()
     for kk, data_id in enumerate(data_ids):
@@ -268,17 +254,10 @@ def _get_basis_memory_experiment_parts(
     state_prep = stim.Circuit()
     state_prep.append(f"R{basis}", data_ids)
 
-    ####################
-    # QEC CYCLE
-    ####################
-
+    # build a QEC cycle
     qec_cycle, measurement_record, detector_record = _get_qec_cycle(
         code, num_rounds, qubit_ids, basis_check_ids, syndrome_measurement_strategy
     )
-
-    ####################
-    # DATA QUBIT READOUT
-    ####################
 
     # measure out the data qubits
     readout = stim.Circuit()
@@ -297,19 +276,14 @@ def _get_basis_memory_experiment_parts(
         )
     detector_record.append({check_id: [dd] for dd, check_id in enumerate(basis_check_ids)})
 
-    # add all basis-type observables
-    for kk, observable in enumerate(code.get_logical_ops(basis)):
-        data_support = np.where(observable)[0]
-        readout.append(
-            "OBSERVABLE_INCLUDE",
-            [measurement_record.get_target_rec(data_ids[qq]) for qq in data_support],
-            kk,
-        )
+    # identify basis-type observables
+    targets = [measurement_record.get_target_rec(data_id) for data_id in data_ids]
+    observables = get_observables(code, data_ids, basis=basis, on_measurements=targets)
 
     return (
         coordinates + state_prep,
         qec_cycle,
-        readout,
+        readout + observables,
         measurement_record,
         detector_record,
         qubit_ids,
@@ -333,18 +307,6 @@ def _get_combined_memory_simulation_parts(
     data_ids, check_ids, ancilla_ids = qubit_ids
     ancilla_ids = ancilla_ids[: code.dimension]
 
-    # identify logical operators
-    kwargs = dict(symplectic=True) if isinstance(code, codes.CSSCode) else {}
-    logical_op_matrix = {pauli: code.get_logical_ops(pauli, **kwargs) for pauli in PAULIS_XZ}
-    logical_op_graph = {
-        pauli: codes.QuditCode.matrix_to_graph(matrix)
-        for pauli, matrix in logical_op_matrix.items()
-    }
-
-    ####################
-    # INITIALIZATION
-    ####################
-
     # set coordinates for all qubits
     coordinates = stim.Circuit()
     for kk, data_id in enumerate(data_ids):
@@ -354,46 +316,13 @@ def _get_combined_memory_simulation_parts(
     for kk, ancilla_id in enumerate(ancilla_ids):
         coordinates.append("QUBIT_COORDS", ancilla_id, (2, kk))
 
-    # initialize all logical qubits in |0>, and associated ancilla qubits in |+>
-    state_prep = with_remapped_qubits(
-        get_encoding_circuit(code, only_zero=True),
-        qubit_map={qq: data_id for qq, data_id in enumerate(data_ids)},
-    )
-    state_prep.append("H", ancilla_ids)
+    # noiselessly prepare the logical qubits of the given code in bell states with ancillas
+    state_prep = get_logical_bell_prep(code, data_ids, ancilla_ids)
 
-    # apply ancilla-controlled-logical-NOT gates to prepare Bell states
-    for logical_qubit_index, ancilla_id in enumerate(ancilla_ids):
-        ancilla_node = Node(logical_qubit_index, is_data=False)
-        for _, data_node, edge_data in logical_op_graph[Pauli.X].edges(ancilla_node, data=True):
-            data_id = data_ids[data_node.index]
-            state_prep.append(f"C{edge_data[Pauli]}", [ancilla_id, data_id])
-
-    ####################
-    # OBSERVABLES
-    ####################
-
-    observables = stim.Circuit()
-    for op_index, (pauli, logical_qubit_index) in enumerate(
-        itertools.product(PAULIS_XZ, range(code.dimension))
-    ):
-        ancilla_node = Node(logical_qubit_index, is_data=False)
-        targets = [
-            stim.target_pauli(data_ids[data_node.index], str(edge_data[Pauli]))
-            for _, data_node, edge_data in logical_op_graph[pauli].edges(ancilla_node, data=True)
-        ]
-        observables.append("OBSERVABLE_INCLUDE", targets, [op_index])
-
-    ####################
-    # QEC CYCLE
-    ####################
-
+    # build a QEC cycle
     qec_cycle, measurement_record, detector_record = _get_qec_cycle(
         code, num_rounds, qubit_ids, check_ids, syndrome_measurement_strategy
     )
-
-    ####################
-    # STABILIZER READOUT
-    ####################
 
     # measure all stabilizers
     readout = stim.Circuit()
@@ -416,6 +345,9 @@ def _get_combined_memory_simulation_parts(
         readout.append("DETECTOR", targets, (num_rounds, 0, kk))
     detector_record.append({check_id: [dd] for dd, check_id in enumerate(check_ids)})
 
+    # identify all observables
+    observables = get_observables(code, data_ids)
+
     return (
         coordinates + state_prep + observables,
         qec_cycle,
@@ -424,6 +356,107 @@ def _get_combined_memory_simulation_parts(
         detector_record,
         qubit_ids,
     )
+
+
+@restrict_to_qubits
+def get_observables(
+    code: codes.QuditCode,
+    data_qubits: Sequence[int] | None = None,
+    *,
+    basis: PauliXZ | None = None,
+    on_measurements: Sequence[stim.target_rec] | bool = False,
+    observable_indices: Sequence[int] | None = None,
+) -> stim.Circuit:
+    """Construct a circuit of logical observable annotations.
+
+    Args:
+        code: The code whose observables we wish to annotate.
+        data_qubits: Indices of the data qubits of the code.  Default: the first len(code) integers.
+        basis: The type of observable (Pauli.X or Pauli.Z) we wish to annotate, or None for both.
+        on_measurements: If provided a sequence of measurement targets, assume that they correspond
+            to measurements of the data qubits in a specified basis (which in this case is not
+            allowed to be None), and define observables using these measurements.  If True, define
+            observables identically on the last len(code) measurements.  Otherwise (if False),
+            define observable using Pauli targets.  Default: False.
+        observable_indices: Indices to use for the observables.  Default: range(num_observables).
+
+    Returns:
+        A Stim circuit of OBSERVABLE_INCLUDE instructions.
+    """
+    assert basis is Pauli.X or basis is Pauli.Z or basis is None
+
+    data_qubits = data_qubits or range(len(code))
+    num_observables = code.dimension * (2 if basis is None else 1)
+    observable_indices = observable_indices or range(num_observables)
+
+    if on_measurements is True:
+        on_measurements = [stim.target_rec(mm) for mm in range(-len(code), 0)]
+
+    # consistency checks
+    assert on_measurements is False or len(on_measurements) == len(code)
+    assert len(observable_indices) == num_observables
+
+    # build a graph of edges directed from observables to the data qubits they address
+    logical_ops = code.get_logical_ops(basis, symplectic=True)
+    logical_op_graph = codes.QuditCode.matrix_to_graph(logical_ops)
+
+    if on_measurements and (not isinstance(code, codes.CSSCode) or basis is None):
+        raise ValueError(
+            "Defining observables on measurements is only allowed (a) for CSS codes (b) with a"
+            " fixed measurement basis (Pauli.X or Pauli.Z)"
+        )
+
+    circuit = stim.Circuit()
+    for node_index, observable_index in enumerate(observable_indices):
+        observable_node = Node(node_index, is_data=False)
+        targets = [
+            on_measurements[data_node.index]
+            if on_measurements
+            else stim.target_pauli(data_qubits[data_node.index], str(edge_data[Pauli]))
+            for _, data_node, edge_data in logical_op_graph.edges(observable_node, data=True)
+        ]
+        circuit.append("OBSERVABLE_INCLUDE", targets, [observable_index])
+
+    return circuit
+
+
+def get_logical_bell_prep(
+    code: codes.QuditCode,
+    data_qubits: Sequence[int] | None = None,
+    ancilla_qubits: Sequence[int] | None = None,
+) -> stim.Circuit:
+    """Noiselessly prepare the logical qubits of the given code in Bell states with ancillas.
+
+    Args:
+        code: The code for which we are constructing a logical Bell-state preparation circuit.
+        data_qubits: Indices of the code's data qubits.  Default: the first len(code) integers.
+        ancilla_qubits: Indices of the ancilla qubits to entangle with the code's logical qubits.
+            Default: the first code.dimension integers after the data qubit indices.
+
+    Returns:
+        A circuit that noiselessly initializes all logical qubits into Bell pairs with ancillas.
+    """
+    data_qubits = data_qubits or range(len(code))
+    ancilla_qubits = ancilla_qubits or range(
+        data_qubits[-1] + 1, data_qubits[-1] + 1 + code.dimension
+    )
+    assert len(data_qubits) == len(code)
+    assert len(ancilla_qubits) == code.dimension
+
+    # initialize all logical qubits in |0>, and associated ancilla qubits in |+>
+    circuit = with_remapped_qubits(get_encoding_circuit(code, only_zero=True), data_qubits)
+    circuit.append("H", ancilla_qubits)
+
+    # apply ancilla-controlled-logical-NOT gates to prepare Bell states
+    logical_ops_x = code.get_logical_ops(Pauli.X, symplectic=True)
+    logical_x_graph = codes.QuditCode.matrix_to_graph(logical_ops_x)
+    for logical_qubit_index, ancilla in enumerate(ancilla_qubits):
+        ancilla_node = Node(logical_qubit_index, is_data=False)
+        for _, data_node, edge_data in logical_x_graph.edges(ancilla_node, data=True):
+            qubit = data_qubits[data_node.index]
+            circuit.append(f"C{edge_data[Pauli]}", [ancilla, qubit])
+
+    return as_noiseless_circuit(circuit)
 
 
 def _get_qec_cycle(

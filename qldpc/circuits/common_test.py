@@ -18,6 +18,7 @@ limitations under the License.
 from __future__ import annotations
 
 import itertools
+import random
 
 import numpy as np
 import pytest
@@ -92,9 +93,11 @@ def test_logical_tableau() -> None:
     assert logical_circuit.to_tableau() == reconstructed_logical_tableau
 
 
-def test_qubit_remap(num_qubits: int = 8) -> None:
+def test_qubit_remap(pytestconfig: pytest.Config, num_qubits: int = 8) -> None:
     """Remap the qubits in a stim.Circuit."""
-    # identify a qubit permutation
+    random.seed(pytestconfig.getoption("randomly_seed"))
+
+    # build a random qubit permutation
     permutation = comb.Permutation.random(num_qubits)
     qubit_map = permutation.array_form
 

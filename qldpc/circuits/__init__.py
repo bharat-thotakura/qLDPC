@@ -12,14 +12,17 @@ from .common import (
     with_remapped_qubits,
 )
 from .memory import (
+    get_logical_bell_prep,
     get_memory_experiment,
     get_memory_experiment_parts,
+    get_observables,
 )
 from .noise_model import (
     DepolarizingNoiseModel,
     NoiseModel,
     NoiseRule,
     SI1000NoiseModel,
+    as_noiseless_circuit,
 )
 from .syndrome_measurement import (
     EdgeColoring,
@@ -43,12 +46,15 @@ __all__ = [
     "get_encoding_tableau",
     "get_logical_tableau",
     "with_remapped_qubits",
+    "get_logical_bell_prep",
     "get_memory_experiment",
     "get_memory_experiment_parts",
+    "get_observables",
     "DepolarizingNoiseModel",
     "NoiseModel",
     "NoiseRule",
     "SI1000NoiseModel",
+    "as_noiseless_circuit",
     "EdgeColoring",
     "EdgeColoringXZ",
     "SyndromeMeasurementStrategy",
