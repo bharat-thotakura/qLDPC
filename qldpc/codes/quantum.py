@@ -100,12 +100,10 @@ class QuantumHammingCode(CSSCode):
         if size == 4 and set_logicals and self.field.order == 2:
             """
             Make a "nice" choice of logical operators for the [15, 7, 3] quantum Hamming code.
-            Fixing all but the first logical qubit to |+> recovers the TetrahedralCode.
+            Pinning all but the last logical qubit to |0> results in the TetrahedralCode.
             See the docstring of the TetrahedralCode for an explanation of the comments below.
             """
             support_x = [
-                # all qubits
-                range(len(self)),
                 # red / green / blue 2-cells in the middle
                 [8, 10, 12, 14],  # red
                 [9, 10, 13, 14],  # green
@@ -114,10 +112,10 @@ class QuantumHammingCode(CSSCode):
                 [2, 6, 10, 14],  # red/green
                 [4, 6, 12, 14],  # red/blue
                 [5, 6, 13, 14],  # green/blue
+                # all qubits
+                range(len(self)),
             ]
             support_z = [
-                # all qubits
-                range(len(self)),
                 # 2-cells connecting the base to the middle
                 [5, 6, 13, 14],  # green/blue
                 [4, 6, 12, 14],  # red/blue
@@ -126,6 +124,8 @@ class QuantumHammingCode(CSSCode):
                 [11, 12, 13, 14],  # blue
                 [9, 10, 13, 14],  # green
                 [8, 10, 12, 14],  # red
+                # all qubits
+                range(len(self)),
             ]
             logical_ops_x = np.zeros((len(support_x), len(self)), dtype=int)
             logical_ops_z = np.zeros((len(support_z), len(self)), dtype=int)
