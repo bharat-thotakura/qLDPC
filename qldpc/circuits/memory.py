@@ -243,10 +243,10 @@ def _get_basis_memory_experiment_parts(
     data_ids, check_ids, _ = qubit_ids
     basis_check_ids = qubit_ids.checks_x if basis is Pauli.X else qubit_ids.checks_z
 
-    # set coordinates for all qubits
+    # set qubit coordinates
     coordinates = get_qubit_coordinates(data_ids, check_ids)
 
-    # reset data qubits to appropriate basis
+    # reset data qubits to the appropriate basis
     state_prep = stim.Circuit()
     state_prep.append(f"R{basis}", data_ids)
 
@@ -260,7 +260,7 @@ def _get_basis_memory_experiment_parts(
     readout.append(f"M{basis}", data_ids)
     measurement_record.append({data_id: [mm] for mm, data_id in enumerate(data_ids)})
 
-    # detectors for all stabilizers that can be inferred from the data qubit measurements
+    # detectors for stabilizers that can be inferred from data qubit measurements
     check_support = code.get_matrix(basis)
     for kk, check_id in enumerate(basis_check_ids):
         data_support = np.where(check_support[kk])[0]
@@ -272,7 +272,7 @@ def _get_basis_memory_experiment_parts(
         )
     detector_record.append({check_id: [dd] for dd, check_id in enumerate(basis_check_ids)})
 
-    # identify basis-type observables
+    # annotate all basis-type observables
     targets = [measurement_record.get_target_rec(data_id) for data_id in data_ids]
     observables = get_observables(code, data_ids, basis=basis, on_measurements=targets)
 
@@ -303,10 +303,10 @@ def _get_combined_memory_simulation_parts(
     data_ids, check_ids, ancilla_ids = qubit_ids
     ancilla_ids = ancilla_ids[: code.dimension]
 
-    # set coordinates for all qubits
+    # set qubit coordinates
     coordinates = get_qubit_coordinates(data_ids, check_ids, ancilla_ids)
 
-    # noiselessly prepare the logical qubits of the given code in bell states with ancillas
+    # noiselessly prepare all logical qubits in Bell states with ancillas
     state_prep = get_logical_bell_prep(code, data_ids, ancilla_ids)
 
     # build a QEC cycle
@@ -325,7 +325,7 @@ def _get_combined_memory_simulation_parts(
         joined_targets = "*".join(targets)
         readout.append(stim.CircuitInstruction(f"MPP {joined_targets}"))
 
-    # update measurement record, add detectors, and update detector record
+    # update the measurement record, add detectors, and update the detector record
     measurement_record.append({check_id: [mm] for mm, check_id in enumerate(check_ids)})
     for kk, check_id in enumerate(check_ids):
         targets = [
@@ -335,7 +335,7 @@ def _get_combined_memory_simulation_parts(
         readout.append("DETECTOR", targets, (num_rounds, 0, kk))
     detector_record.append({check_id: [dd] for dd, check_id in enumerate(check_ids)})
 
-    # identify all observables
+    # annotate all observables
     observables = get_observables(code, data_ids)
 
     return (
