@@ -16,6 +16,7 @@ from .memory import (
     get_memory_experiment,
     get_memory_experiment_parts,
     get_observables,
+    get_qubit_coordinates,
 )
 from .noise_model import (
     DepolarizingNoiseModel,
@@ -50,6 +51,7 @@ __all__ = [
     "get_memory_experiment",
     "get_memory_experiment_parts",
     "get_observables",
+    "get_qubit_coordinates",
     "DepolarizingNoiseModel",
     "NoiseModel",
     "NoiseRule",

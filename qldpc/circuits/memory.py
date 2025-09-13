@@ -244,11 +244,7 @@ def _get_basis_memory_experiment_parts(
     basis_check_ids = qubit_ids.checks_x if basis is Pauli.X else qubit_ids.checks_z
 
     # set coordinates for all qubits
-    coordinates = stim.Circuit()
-    for kk, data_id in enumerate(data_ids):
-        coordinates.append("QUBIT_COORDS", data_id, (0, kk))
-    for kk, check_id in enumerate(check_ids):
-        coordinates.append("QUBIT_COORDS", check_id, (1, kk))
+    coordinates = get_qubit_coordinates(data_ids, check_ids)
 
     # reset data qubits to appropriate basis
     state_prep = stim.Circuit()
@@ -308,13 +304,7 @@ def _get_combined_memory_simulation_parts(
     ancilla_ids = ancilla_ids[: code.dimension]
 
     # set coordinates for all qubits
-    coordinates = stim.Circuit()
-    for kk, data_id in enumerate(data_ids):
-        coordinates.append("QUBIT_COORDS", data_id, (0, kk))
-    for kk, check_id in enumerate(check_ids):
-        coordinates.append("QUBIT_COORDS", check_id, (1, kk))
-    for kk, ancilla_id in enumerate(ancilla_ids):
-        coordinates.append("QUBIT_COORDS", ancilla_id, (2, kk))
+    coordinates = get_qubit_coordinates(data_ids, check_ids, ancilla_ids)
 
     # noiselessly prepare the logical qubits of the given code in bell states with ancillas
     state_prep = get_logical_bell_prep(code, data_ids, ancilla_ids)
@@ -356,6 +346,31 @@ def _get_combined_memory_simulation_parts(
         detector_record,
         qubit_ids,
     )
+
+
+def get_qubit_coordinates(
+    data_qubits: Sequence[int] = (),
+    check_qubits: Sequence[int] = (),
+    ancilla_qubits: Sequence[int] = (),
+) -> stim.Circuit:
+    """Circuit declaring coordinates for the given qubits.
+
+    Args:
+        data_qubits: The indices of data qubits.  data_qubits[kk] gets index (0, kk).
+        check_qubits: The indices of check qubits.  check_qubits[kk] gets index (1, kk).
+        ancilla_qubits: The indices of ancilla qubits.  ancilla_qubits[kk] gets index (2, kk).
+
+    Returns:
+        A circuit declaring qubit coordinates.
+    """
+    circuit = stim.Circuit()
+    for kk, qubit in enumerate(data_qubits):
+        circuit.append("QUBIT_COORDS", qubit, (0, kk))
+    for kk, qubit in enumerate(check_qubits):
+        circuit.append("QUBIT_COORDS", qubit, (1, kk))
+    for kk, qubit in enumerate(ancilla_qubits):
+        circuit.append("QUBIT_COORDS", qubit, (2, kk))
+    return circuit
 
 
 @restrict_to_qubits
