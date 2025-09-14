@@ -1489,7 +1489,7 @@ class QuditCode(AbstractCode):
         Args:
             qudits: The qudits to transform, or None for all qudits.  Default: None.
         """
-        qudits = qudits if qudits is not None else slice(0, len(self))
+        qudits = qudits if qudits is not None else slice(len(self))
 
         def transform_ops(ops: galois.FieldArray) -> galois.FieldArray:
             """Fourier-transform the given Pauli strings."""
