@@ -1275,8 +1275,11 @@ class QuditCode(AbstractCode):
         logicals_ops_x: npt.NDArray[np.int_] | Sequence[Sequence[int]],
         *,
         validate: bool = True,
-    ) -> None:  # pragma: no cover
-        """Set the X-type logicals of this code.  Determine the Z-type logicals automatically."""
+    ) -> None:
+        """Set the X-type logical operators of this code.
+
+        Determine suitable Z-type logical operators automatically.
+        """
         raise NotImplementedError("QuditCode.set_logical_ops_x is not yet implemented :(")
 
     def set_logical_ops_z(
@@ -1284,8 +1287,11 @@ class QuditCode(AbstractCode):
         logicals_ops_z: npt.NDArray[np.int_] | Sequence[Sequence[int]],
         *,
         validate: bool = True,
-    ) -> None:  # pragma: no cover
-        """Set the X-type logicals of this code.  Determine the X-type logicals automatically."""
+    ) -> None:
+        """Set the Z-type logical operators of this code.
+
+        Determine suitable X-type logical operators automatically.
+        """
         raise NotImplementedError("QuditCode.set_logical_ops_z is not yet implemented :(")
 
     def get_stabilizer_ops(
@@ -2290,13 +2296,15 @@ class CSSCode(QuditCode):
         *,
         validate: bool = True,
     ) -> None:
-        """Set the X-type logicals of this code.  Determine the Z-type logicals automatically.
+        """Set the X-type logical operators of this code.
 
-        Let (Kx, Kz) and (Lx, Lz) denote, respectively, the matrices of "old" and "new" logical
-        operators of this code.  We know that:
-        (1) Lz = P @ Kz for some matrix P, and
+        Determine suitable Z-type logical operators automatically.
+
+        Let (Kx, Kz) and (Lx, Lz) denote the matrices of "old" and "new" logical operators of this
+        code.  We know Kx, Kz, and Lx.  To find a suitable choice of Lz, we write
+        (1) Lz = P @ Kz for some matrix P, and note that
         (2) Lz @ Lx.T = I (the identity matrix).
-        Combining these conditions, we find that P = (Kz @ Lx.T)**-1, so Lz = (Kz @ Lx.T)**-1 @ Kz.
+        Combining these conditions, we find P = (Kz @ Lx.T)**-1, and set Lz = (Kz @ Lx.T)**-1 @ Kz.
         """
         logicals_ops_x = np.asarray(logicals_ops_x).view(self.field)
         old_logicals_z = self.get_logical_ops(Pauli.Z)
@@ -2309,13 +2317,15 @@ class CSSCode(QuditCode):
         *,
         validate: bool = True,
     ) -> None:
-        """Set the Z-type logicals of this code.  Determine the X-type logicals automatically.
+        """Set the Z-type logical operators of this code.
 
-        Let (Kx, Kz) and (Lx, Lz) denote, respectively, the matrices of "old" and "new" logical
-        operators of this code.  We know that:
-        (1) Lx = P @ Kx for some matrix P, and
+        Determine suitable X-type logical operators automatically.
+
+        Let (Kx, Kz) and (Lx, Lz) denote the matrices of "old" and "new" logical operators of this
+        code.  We know Kx, Kz, and Lz.  To find a suitable choice of Lx, we write
+        (1) Lx = P @ Kx for some matrix P, and note that
         (2) Lx @ Lz.T = I (the identity matrix).
-        Combining these conditions, we find that P = (Kx @ Lz.T)**-1, so Lx = (Kx @ Lz.T)**-1 @ Kx.
+        Combining these conditions, we find P = (Kx @ Lz.T)**-1, and set Lx = (Kx @ Lz.T)**-1 @ Kx.
         """
         logicals_ops_z = np.asarray(logicals_ops_z).view(self.field)
         old_logicals_x = self.get_logical_ops(Pauli.X)

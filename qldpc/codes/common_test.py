@@ -263,6 +263,12 @@ def test_qudit_codes() -> None:
     # the logical ops of the redundant code are valid ops of the original code
     code.set_logical_ops(redundant_code.get_logical_ops())  # also validates the logical ops
 
+    # setting only X or Z-type logicals is not yet implemented for non-CSS codes
+    with pytest.raises(NotImplementedError, match="not yet implemented"):
+        code.set_logical_ops_x([])
+    with pytest.raises(NotImplementedError, match="not yet implemented"):
+        code.set_logical_ops_z([])
+
     # stacking two codes
     two_codes = codes.QuditCode.stack(code, code)
     assert len(two_codes) == len(code) * 2
@@ -493,9 +499,10 @@ def test_qudit_to_css() -> None:
 # CSS code tests
 
 
-def test_css_code() -> None:
+def test_css_code(pytestconfig: pytest.Config) -> None:
     """Miscellaneous CSS code tests and coverage."""
-    code_x = codes.ClassicalCode.random(3, 2)
+    seed = pytestconfig.getoption("randomly_seed")
+    code_x = codes.ClassicalCode.random(3, 2, seed=seed)
 
     code_z = ~code_x
     code = codes.CSSCode(code_x, code_z)
@@ -533,22 +540,23 @@ def test_css_code() -> None:
     assert nx.utils.graphs_equal(subgraphs[1], code.get_graph(Pauli.Z))
 
 
-def test_css_ops() -> None:
+def test_css_ops(pytestconfig: pytest.Config) -> None:
     """Logical and stabilizer operator construction for CSS codes."""
-    code: codes.CSSCode
+    seed = pytestconfig.getoption("randomly_seed")
 
-    code = codes.SHPCode(codes.ClassicalCode.random(4, 2, field=3))
+    code: codes.CSSCode = codes.SHPCode(codes.ClassicalCode.random(4, 2, field=3, seed=seed))
 
     # set X-type logicals and determine Z-type logicals automatically
     other_code = codes.CSSCode(code.matrix_x, code.matrix_z)
     other_code.set_logical_ops_x(code.get_logical_ops(Pauli.X))
     assert np.array_equal(code.get_logical_ops(Pauli.X), other_code.get_logical_ops(Pauli.X))
-    assert np.array_equal(code.get_logical_ops(Pauli.Z), other_code.get_logical_ops(Pauli.Z))
+    assert np.array_equal(
+        code.get_logical_ops(Pauli.X) @ other_code.get_logical_ops(Pauli.Z).T,
+        np.eye(code.dimension),
+    )
 
     # shuffle logical operators around
     code.set_logical_ops_z(code.get_logical_ops(Pauli.Z)[::-1])
-    assert np.array_equal(code.get_logical_ops(Pauli.X), other_code.get_logical_ops(Pauli.X)[::-1])
-    assert np.array_equal(code.get_logical_ops(Pauli.Z), other_code.get_logical_ops(Pauli.Z)[::-1])
 
     # identify stabilizer group
     code._stabilizer_ops = None
