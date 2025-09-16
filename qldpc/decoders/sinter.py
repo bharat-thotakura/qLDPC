@@ -293,6 +293,6 @@ class CompiledCompositeSinterDecoder(CompiledSinterDecoder):
             self.segment_detectors, self.segment_observables, self.segment_decoders
         ):
             syndromes = detection_event_data.T[detectors].T
-            observable_flips[:, observables] = decoder.decode_shots(syndromes)
+            observable_flips[:, observables] ^= decoder.decode_shots(syndromes)
 
         return observable_flips
