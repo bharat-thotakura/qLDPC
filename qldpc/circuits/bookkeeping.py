@@ -21,7 +21,7 @@ import collections
 import copy
 import dataclasses
 import itertools
-from collections.abc import Hashable, Iterator, Sequence
+from collections.abc import Hashable, Iterator, Mapping, Sequence
 from typing import Self
 
 import stim
@@ -107,8 +107,12 @@ class Record:
     num_events: int
     key_to_events: dict[Hashable, list[int]]
 
-    def __init__(self, initial_record: dict[Hashable, list[int]] | None = None) -> None:
-        self.key_to_events = collections.defaultdict(list, initial_record if initial_record else {})
+    def __init__(
+        self, initial_record: Record | Mapping[Hashable, Sequence[int]] | None = None
+    ) -> None:
+        self.key_to_events = collections.defaultdict(list)
+        if initial_record:
+            self.key_to_events |= {key: list(events) for key, events in initial_record.items()}
         self.num_events = sum(len(events) for events in self.key_to_events.values())
 
     def items(self) -> Iterator[tuple[Hashable, list[int]]]:
@@ -125,7 +129,7 @@ class Record:
         """The events associated with a key."""
         return [event for key in keys for event in self.key_to_events.get(key, [])]
 
-    def append(self, record: Record | dict[Hashable, list[int]], repeat: int = 1) -> None:
+    def append(self, record: Record | Mapping[Hashable, Sequence[int]], repeat: int = 1) -> None:
         """Append the given record to this one.
 
         All event numbers in the appended record are increased by the number of events in the current
