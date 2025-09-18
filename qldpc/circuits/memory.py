@@ -459,18 +459,13 @@ def get_logical_bell_prep(
     assert len(data_qubits) == len(code)
     assert len(ancilla_qubits) == code.dimension
 
-    # initialize all logical qubits in |0>, and associated ancilla qubits in |+>
-    circuit = with_remapped_qubits(get_encoding_circuit(code, only_zero=True), data_qubits)
-    circuit.append("H", ancilla_qubits)
+    # entangle the first code.dimension data qubits with ancillas
+    circuit = stim.Circuit()
+    circuit.append("H", data_qubits[: code.dimension])
+    circuit.append("CX", [qq for pair in zip(data_qubits, ancilla_qubits) for qq in pair])
 
-    # apply ancilla-controlled-logical-NOT gates to prepare Bell states
-    logical_ops_x = code.get_logical_ops(Pauli.X, symplectic=True)
-    logical_x_graph = codes.QuditCode.matrix_to_graph(logical_ops_x)
-    for logical_qubit_index, ancilla in enumerate(ancilla_qubits):
-        ancilla_node = Node(logical_qubit_index, is_data=False)
-        for _, data_node, edge_data in logical_x_graph.edges(ancilla_node, data=True):
-            qubit = data_qubits[data_node.index]
-            circuit.append(f"C{edge_data[Pauli]}", [ancilla, qubit])
+    # encode the first code.dimension data qubits
+    circuit.append(with_remapped_qubits(get_encoding_circuit(code), data_qubits))
 
     return as_noiseless_circuit(circuit)
 
