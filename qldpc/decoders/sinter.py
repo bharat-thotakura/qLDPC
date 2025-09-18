@@ -281,10 +281,7 @@ class CompositeSinterDecoder(SinterDecoder):
             error_probs = error_probs[mask]
 
             segment_dem = DetectorErrorModelArrays.from_arrays(
-                detector_flip_matrix,
-                observable_flip_matrix,
-                error_probs,
-                simplify=simplify,  # TODO: is simplifying here redundant with simplifying above?
+                detector_flip_matrix, observable_flip_matrix, error_probs
             ).to_detector_error_model()
             segment_dems.append(segment_dem)
 
