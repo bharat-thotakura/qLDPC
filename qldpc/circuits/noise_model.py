@@ -54,6 +54,7 @@ import stim
 
 CLIFFORD_1Q = "C1"
 CLIFFORD_2Q = "C2"
+CLIFFORD_PP = "CPP"
 JUST_MEASURE_1Q = "M1"
 JUST_MEASURE_2Q = "M2"
 JUST_MEASURE_PP = "MPP"
@@ -151,10 +152,10 @@ OP_TYPES = {
     "MYY": JUST_MEASURE_2Q,
     "MZZ": JUST_MEASURE_2Q,
     "MPP": JUST_MEASURE_PP,
-    # unsupported
-    # "SPP": ...,
-    # "SPP_DAG": ...,
-    # "REPEAT": ...,
+    # Pauli product gates
+    "SPP": CLIFFORD_PP,
+    "SPP_DAG": CLIFFORD_PP,
+    # "REPEAT": ...,  # UNSUPPORTED
     # annotations
     "DETECTOR": ANNOTATION,
     "MPAD": ANNOTATION,
@@ -729,8 +730,8 @@ def _split_targets_if_needed(
 ) -> Iterator[stim.CircuitInstruction]:
     """Splits operations into pieces as needed.
 
-    This function splits operations like MPP into each product, and separates classical control
-    operations from quantum operations.
+    This function splits operations like SPP and MPP into each Pauli product, and separates
+    classical control operations from quantum operations.
 
     Args:
         op: The circuit instruction to potentially split.
@@ -743,8 +744,8 @@ def _split_targets_if_needed(
     op_type = OP_TYPES[op.name]
     if op_type == CLIFFORD_2Q:
         yield from _split_targets_clifford_2q(op, immune_qubits, immune_op_tag)
-    elif op_type == JUST_MEASURE_PP:
-        yield from _split_targets_mpp(op)
+    elif op_type == CLIFFORD_PP or op_type == JUST_MEASURE_PP:
+        yield from _split_targets_pp(op)
     elif op_type in [NOISE, ANNOTATION]:
         yield op
     else:
@@ -802,16 +803,16 @@ def _split_targets_clifford_2q(
         yield op
 
 
-def _split_targets_mpp(op: stim.CircuitInstruction) -> Iterator[stim.CircuitInstruction]:
-    """Splits an MPP operation into one operation for each Pauli product it measures.
+def _split_targets_pp(op: stim.CircuitInstruction) -> Iterator[stim.CircuitInstruction]:
+    """Splits a Pauli product operation into one operation for each Pauli product.
 
     Args:
-        op: The MPP operation to split.
+        op: The Pauli product operation to split.
 
     Yields:
-        Circuit instructions, one for each Pauli product measurement.
+        Circuit instructions, one for each Pauli product.
     """
-    assert OP_TYPES[op.name] == JUST_MEASURE_PP
+    assert OP_TYPES[op.name] == CLIFFORD_PP or OP_TYPES[op.name] == JUST_MEASURE_PP
     targets = op.targets_copy()
     args = op.gate_args_copy()
     start = end = 0
@@ -831,7 +832,7 @@ def _iter_moments_and_repeat_blocks(
     """Splits a circuit into moments and some operations into pieces.
 
     Classical control system operations like CX rec[-1] 0 are split from quantum operations like
-    CX 1 0.  MPP operations are split into one operation per Pauli product.
+    CX 1 0.  SPP and MPP operations are split into one operation per Pauli product.
 
     Args:
         circuit: The circuit to split into moments.
