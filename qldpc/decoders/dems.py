@@ -190,6 +190,21 @@ class DetectorErrorModelArrays:
         """Simplify this DetectorErrorModelArrays object by merging errors."""
         return DetectorErrorModelArrays(self.to_detector_error_model(), simplify=True)
 
+    def post_selected_on(self, *detectors: int) -> DetectorErrorModelArrays:
+        """Condition this detector error model on the given detectors being in 0 (untriggered).
+
+        In effect, remove the given detectors and the error mechanisms that trigger them.
+        """
+        detectors_to_remove = list(detectors)
+        detectors_to_keep = np.ones(self.num_detectors, dtype=bool)
+        detectors_to_keep[detectors_to_remove] = False
+        errors_to_keep = self.detector_flip_matrix[detectors_to_remove].getnnz(axis=0) == 0
+        return DetectorErrorModelArrays.from_arrays(
+            self.detector_flip_matrix[detectors_to_keep][:, errors_to_keep],
+            self.observable_flip_matrix[:, errors_to_keep],
+            self.error_probs[errors_to_keep],
+        )
+
 
 def _values_that_occur_an_odd_number_of_times(items: Collection[int]) -> frozenset[int]:
     """Subset of items that occur an odd number of times."""

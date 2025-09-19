@@ -100,3 +100,22 @@ def test_simplify() -> None:
     """)
     assert dem == dem_arrays.to_detector_error_model()
     assert simplified_dem == dem_arrays.simplified().to_detector_error_model()
+
+
+def test_post_selection() -> None:
+    """Post select on some detectors."""
+    dem = stim.DetectorErrorModel("""
+        detector D0
+        detector D1
+        logical_observable L0
+        logical_observable L1
+        error(0.3) D0 D1 L0
+        error(0.3) D1 L1
+    """)
+    post_selected_dem = stim.DetectorErrorModel("""
+        detector D0
+        logical_observable L0
+        logical_observable L1
+        error(0.3) D0 L1
+    """)
+    assert post_selected_dem == decoders.DetectorErrorModelArrays(dem).post_selected_on(0).to_dem()
