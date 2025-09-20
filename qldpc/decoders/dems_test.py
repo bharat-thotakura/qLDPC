@@ -118,4 +118,6 @@ def test_post_selection() -> None:
         logical_observable L1
         error(0.3) D0 L1
     """)
-    assert post_selected_dem == decoders.DetectorErrorModelArrays(dem).post_selected_on(0).to_dem()
+    assert (
+        post_selected_dem == decoders.DetectorErrorModelArrays(dem).post_selected_on([0]).to_dem()
+    )

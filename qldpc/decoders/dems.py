@@ -190,15 +190,15 @@ class DetectorErrorModelArrays:
         """Simplify this DetectorErrorModelArrays object by merging errors."""
         return DetectorErrorModelArrays(self.to_detector_error_model(), simplify=True)
 
-    def post_selected_on(self, *detectors: int) -> DetectorErrorModelArrays:
+    def post_selected_on(self, detectors: Collection[int]) -> DetectorErrorModelArrays:
         """Condition this detector error model on the given detectors being in 0 (untriggered).
 
         In effect, remove the given detectors and the error mechanisms that trigger them.
         """
-        detectors_to_remove = list(detectors)
+        detectors = list(detectors)
         detectors_to_keep = np.ones(self.num_detectors, dtype=bool)
-        detectors_to_keep[detectors_to_remove] = False
-        errors_to_keep = self.detector_flip_matrix[detectors_to_remove].getnnz(axis=0) == 0
+        detectors_to_keep[detectors] = False
+        errors_to_keep = self.detector_flip_matrix[detectors].getnnz(axis=0) == 0
         return DetectorErrorModelArrays.from_arrays(
             self.detector_flip_matrix[detectors_to_keep][:, errors_to_keep],
             self.observable_flip_matrix[:, errors_to_keep],
