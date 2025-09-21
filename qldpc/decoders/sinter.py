@@ -129,8 +129,8 @@ class CompiledSinterDecoder(sinter.CompiledDecoder):
         See help(sinter.CompiledDecoder) for additional information.
         """
         if hasattr(self.decoder, "decode_batch"):
-            predicted_errors_T = self.decoder.decode_batch(detection_event_data)
-            observable_flips = predicted_errors_T @ self.dem_arrays.observable_flip_matrix.T % 2
+            predicted_errors = self.decoder.decode_batch(detection_event_data)
+            observable_flips = predicted_errors @ self.dem_arrays.observable_flip_matrix.T % 2
         else:
             observable_flips = []
             for syndrome in detection_event_data:
