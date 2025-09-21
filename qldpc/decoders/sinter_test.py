@@ -64,7 +64,7 @@ def test_subgraph_decoding() -> None:
         compiled_decoder_1.packbits(det_data)
     )
 
-    # build a segmented decoder, compile, and predict observable flips
+    # build a subgraph decoder, compile, and predict observable flips
     decoder_2 = decoders.SubgraphSinterDecoder([[0], [1]], with_lookup=True, max_weight=2)
     compiled_decoder_2 = decoder_2.compile_decoder_for_dem(dem)
     predicted_flips_2 = compiled_decoder_2.decode_shots_bit_packed(
