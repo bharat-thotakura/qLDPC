@@ -380,18 +380,13 @@ class SequentialSinterDecoder(SinterDecoder):
         # identify addressed circuit errors and compile a decoder for each segment
         segment_errors = []
         segment_decoders = []
-        preceding_detectors: list[int] = []  # detectors addressed by preceding segments
+        addressed_errors = np.zeros(dem_arrays.num_errors, dtype=bool)
         for detectors in self.segment_detectors:
             # identify errors that trigger the detectors for this segment
             errors = dem_arrays.detector_flip_matrix[detectors].getnnz(axis=0) != 0
 
-            # remove errors that are dealt with by preceding segments
-            past_errors = (
-                dem_arrays.detector_flip_matrix[preceding_detectors].getnnz(axis=0) != 0
-                if preceding_detectors
-                else []
-            )
-            errors[past_errors] = False
+            # remove errors that were dealt with by preceding segments
+            errors[addressed_errors] = False
             segment_errors.append(errors)
 
             # build the detector error model for this segment
@@ -405,8 +400,8 @@ class SequentialSinterDecoder(SinterDecoder):
             segment_decoder = self.get_configured_decoder(segment_dem_arrays)
             segment_decoders.append(segment_decoder)
 
-            # update the list of "preceding" detectors
-            preceding_detectors.extend(detectors)
+            # update the history of errors that were dealt with by preceding segments
+            addressed_errors |= errors
 
         return CompiledSequentialSinterDecoder(
             dem_arrays,
