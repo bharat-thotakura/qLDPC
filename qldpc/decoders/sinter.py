@@ -446,7 +446,7 @@ class CompiledSequentialSinterDecoder(CompiledSinterDecoder):
         num_samples, num_detectors = detection_event_data.shape
         assert num_detectors == self.dem_arrays.num_detectors
 
-        # identify the net circuit error by decoding one segment at a time
+        # identify the net circuit error predicted by decoding one segment at a time
         net_error = np.zeros((num_samples, self.dem_arrays.num_errors), dtype=int)
         detector_flip_matrix_T = self.dem_arrays.detector_flip_matrix.T
         for detectors, errors, decoder in zip(
@@ -456,12 +456,11 @@ class CompiledSequentialSinterDecoder(CompiledSinterDecoder):
             syndromes = (detection_event_data + net_error @ detector_flip_matrix_T)[:, detectors]
 
             # decode this syndrome and update the net error appropriately
-            predicted_error = (
+            net_error[:, errors] = (
                 decoder.decode_batch(syndromes)
                 if hasattr(decoder, "decode_batch")
                 else np.array([decoder.decode(syndrome) for syndrome in syndromes])
             )
-            net_error[:, errors] = predicted_error
 
         # predicted observable flips
         return net_error @ self.dem_arrays.observable_flip_matrix.T
