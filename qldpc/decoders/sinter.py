@@ -302,7 +302,7 @@ class CompiledSubgraphSinterDecoder(CompiledSinterDecoder):
 
         See help(sinter.CompiledDecoder) for additional information.
         """
-        assert detection_event_data.shape[-1] == self.num_detectors
+        assert detection_event_data.shape[1] == self.num_detectors
 
         # initialize predicted observable flips
         observable_flips = np.zeros(
@@ -313,7 +313,160 @@ class CompiledSubgraphSinterDecoder(CompiledSinterDecoder):
         for detectors, observables, decoder in zip(
             self.subgraph_detectors, self.subgraph_observables, self.subgraph_decoders
         ):
-            syndromes = detection_event_data.T[detectors].T
+            syndromes = detection_event_data[:, detectors]
             observable_flips[:, observables] ^= decoder.decode_shots(syndromes)
 
         return observable_flips
+
+
+class SequentialSinterDecoder(SinterDecoder):
+    """Decoder usable by Sinter for decoding circuit errors.
+
+    A SequentialSinterDecoder splits a detector error model into time-ordered segments, and emulates
+    applying active mid-circuit corrections after every segment in a quantum circuit.  Specifically,
+    a SequentialSinterDecoder decodes segments sequentially, one by one.  After decoding the
+    syndrome for segment j to infer a circuit error, this decoder emulates applying a corresponding
+    correction by appropriately updating the syndrome for segment j+1.
+
+    Formally, we denote the full parity check matrix of a detector error model by H, denote the
+    segments to be decoded by S_1, S_2, ..., S_n, and denode the full syndrome to be decoded by s_1.
+    The result of decoding segment S_1 is a decoded circuit error e_1.  This error is used to
+    construct the syndrome for segment S_2, namely s_2 = s_1 + H @ e_1.  More generally, the
+    syndrome for segment S_(j+1) is s_(j+1) = s_j + H @ e_j = s_1 + H @ sum_(k=1)^j e_k.  After
+    decoding all segments, the net error sum_(j=1)^n e_j is used to predict observable flips.
+    """
+
+    def __init__(
+        self,
+        segment_detectors: Sequence[Collection[int]],
+        priors_arg: str | None = None,
+        log_likelihood_priors: bool = False,
+        **decoder_kwargs: object,
+    ) -> None:
+        """Initialize a SinterDecoder that splits a detector error model into disjoint subgraphs.
+
+        A SequentialSinterDecoder is used by Sinter to decode detection events from a detector error
+        model to predict observable flips.
+
+        See help(sinter.Decoder) for additional information.
+
+        Args:
+            segment_detectors: A sequence containing one set of detectors per segment.
+            priors_arg: The keyword argument to which to pass the probabilities of circuit error
+                likelihoods.  This argument is only necessary for custom decoders.
+            log_likelihood_priors: If True, instead of error probabilities p, pass log-likelihoods
+                np.log((1 - p) / p) to the priors_arg.  This argument is only necessary for custom
+                decoders.  Default: False (unless decoding with MWPM).
+            **decoder_kwargs: Arguments to pass to qldpc.decoders.get_decoder when compiling a
+                custom decoder from a detector error model.
+        """
+        self.segment_detectors = list(map(list, segment_detectors))
+        SinterDecoder.__init__(
+            self,
+            priors_arg=priors_arg,
+            log_likelihood_priors=log_likelihood_priors,
+            **decoder_kwargs,
+        )
+
+    def compile_decoder_for_dem(
+        self, dem: stim.DetectorErrorModel, *, simplify: bool = True
+    ) -> CompiledSubgraphSinterDecoder:
+        """Creates a decoder preconfigured for the given detector error model.
+
+        See help(sinter.Decoder) for additional information.
+        """
+        dem_arrays = DetectorErrorModelArrays(dem, simplify=simplify)
+
+        # identify addressed circuit errors and compile a decoder for each segment
+        segment_errors = []
+        segment_decoders = []
+        preceding_detectors: list[int] = []  # detectors addressed by preceding segments
+        for detectors in self.segment_detectors:
+            # identify errors that trigger the detectors for this segment
+            errors = dem_arrays.detector_flip_matrix[detectors].getnnz(axis=0) != 0
+
+            # remove errors that are dealt with by preceding segments
+            past_errors = (
+                dem_arrays.detector_flip_matrix[preceding_detectors].getnnz(axis=0) != 0
+                if preceding_detectors
+                else []
+            )
+            errors[past_errors] = False
+            segment_errors.append(errors)
+
+            # build the detector error model for this segment
+            segment_dem_arrays = DetectorErrorModelArrays.from_arrays(
+                dem_arrays.detector_flip_matrix[detectors][:, errors],
+                dem_arrays.observable_flip_matrix[:, errors],
+                dem_arrays.error_probs[errors],
+            )
+
+            # compile the decoder for this segment
+            segment_decoder = self.get_configured_decoder(segment_dem_arrays)
+            segment_decoders.append(segment_decoder)
+
+            # update the list of "preceding" detectors
+            preceding_detectors.extend(detectors)
+
+        return CompiledSequentialSinterDecoder(
+            dem_arrays,
+            self.segment_detectors,
+            segment_errors,
+            segment_decoders,
+        )
+
+
+class CompiledSequentialSinterDecoder(CompiledSinterDecoder):
+    """Decoder usable by Sinter for decoding circuit errors, compiled to a specific circuit.
+
+    This decoder splits a decoding problem into segments that are decoded sequentially.
+
+    Instances of this class are meant to be constructed by a SequentialSinterDecoder, whose
+    .compile_decoder_for_dem method returns a CompiledSequentialSinterDecoder.
+    See help(SequentialSinterDecoder).
+    """
+
+    def __init__(
+        self,
+        dem_arrays: DetectorErrorModelArrays,
+        segment_detectors: Sequence[Sequence[int] | slice],
+        segment_errors: Sequence[Sequence[int] | slice],
+        segment_decoders: Sequence[Decoder],
+    ) -> None:
+        assert len(segment_detectors) == len(segment_errors) == len(segment_decoders)
+        self.dem_arrays = dem_arrays
+        self.segment_detectors = segment_detectors
+        self.segment_errors = segment_errors
+        self.segment_decoders = segment_decoders
+
+        self.num_detectors = dem_arrays.num_detectors
+
+    def decode_shots(self, detection_event_data: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
+        """Predicts observable flips from the given detection events.
+
+        This method accepts and returns boolean data.
+
+        See help(sinter.CompiledDecoder) for additional information.
+        """
+        num_samples, num_detectors = detection_event_data.shape
+        assert num_detectors == self.dem_arrays.num_detectors
+
+        # identify the net circuit error by decoding one segment at a time
+        net_error = np.zeros((num_samples, self.dem_arrays.num_errors), dtype=int)
+        detector_flip_matrix_T = self.dem_arrays.detector_flip_matrix.T
+        for detectors, errors, decoder in zip(
+            self.segment_detectors, self.segment_errors, self.segment_decoders
+        ):
+            # the bare syndrome plus any corrections we have inferred so far
+            syndromes = (detection_event_data + net_error @ detector_flip_matrix_T)[:, detectors]
+
+            # decode this syndrome and update the net error appropriately
+            predicted_error = (
+                decoder.decode_batch(syndromes)
+                if hasattr(decoder, "decode_batch")
+                else np.array([decoder.decode(syndrome) for syndrome in syndromes])
+            )
+            net_error[:, errors] = predicted_error
+
+        # predicted observable flips
+        return net_error @ self.dem_arrays.observable_flip_matrix.T
