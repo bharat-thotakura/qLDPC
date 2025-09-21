@@ -244,28 +244,27 @@ class SubgraphSinterDecoder(SinterDecoder):
             else self.subgraph_observables
         )
 
-        # build a detector error model for each subgraph
-        subgraph_dems = []
+        # build a decoder for each subgraph
+        subgraph_decoders = []
         for detectors, observables in zip(self.subgraph_detectors, subgraph_observables):
             # identify the error mechanisms that flip these detectors
             errors = dem_arrays.detector_flip_matrix.getnnz(axis=0) != 0
 
-            # restrict to the detectors, observables, and errors of this subgraph
+            # build the detector error model for this subgraph
             subgraph_dem = DetectorErrorModelArrays.from_arrays(
                 dem_arrays.detector_flip_matrix[detectors][:, errors],
                 dem_arrays.observable_flip_matrix[observables][:, errors],
                 dem_arrays.error_probs[errors],
             ).to_detector_error_model()
-            subgraph_dems.append(subgraph_dem)
 
-        compiled_decoders = [
-            SinterDecoder.compile_decoder_for_dem(self, subgraph_dem)
-            for subgraph_dem in subgraph_dems
-        ]
+            # compile the decoder for this subgraph
+            subgraph_decoder = SinterDecoder.compile_decoder_for_dem(self, subgraph_dem)
+            subgraph_decoders.append(subgraph_decoder)
+
         return CompiledSubgraphSinterDecoder(
             self.subgraph_detectors,
             subgraph_observables,
-            compiled_decoders,
+            subgraph_decoders,
             dem.num_detectors,
             dem.num_observables,
         )
