@@ -114,6 +114,9 @@ class Record(Mapping[Hashable, list[int]]):
             self.key_to_events |= {key: list(events) for key, events in initial_record.items()}
         self.num_events = sum(len(events) for events in self.key_to_events.values())
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({dict(self.key_to_events)})"
+
     def __len__(self) -> int:
         """The number of keys associated with events in this record."""
         return len(self.key_to_events)
@@ -229,7 +232,7 @@ class DetectorRecord(Record):
         See help(qldpc.decoders.DetectorErrorModelArrays).
         """
         # identify the indices of all detectors, and the detectors to remove
-        last_detector = max(max(detectors) for detectors in self.values())
+        last_detector = max(max(detectors) for detectors in self.values() if detectors)
         detector_indices = np.arange(last_detector + 1)
         detectors_to_remove = sorted(self.get_events(key))
 
