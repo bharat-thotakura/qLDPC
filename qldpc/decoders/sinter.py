@@ -446,6 +446,7 @@ class CompiledSequentialSinterDecoder(CompiledSinterDecoder):
         return (
             self.decode_shots_to_error(detection_event_data)
             @ self.dem_arrays.observable_flip_matrix.T
+            % 2
         )
 
     def decode_shots_to_error(
