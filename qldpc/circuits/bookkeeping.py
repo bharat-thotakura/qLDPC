@@ -212,7 +212,7 @@ class DetectorRecord(Record):
         detectors = self.get_events(check)
         if not -len(detectors) <= detection_index < len(detectors):
             raise ValueError(
-                f"Invalid detection index {detection_index} for parity check {check} with "
+                f"Invalid detection index {detection_index} for parity check '{check}' with "
                 f"{len(detectors)} detectors"
             )
         return detectors[detection_index]
