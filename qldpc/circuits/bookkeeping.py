@@ -229,11 +229,11 @@ class DetectorRecord(Record):
         See help(qldpc.decoders.DetectorErrorModelArrays).
         """
         # identify the indices of all detectors, and the detectors to remove
-        max_detector = max(max(detectors) for detectors in self.values())
-        detector_indices = np.arange(max_detector + 1)
+        last_detector = max(max(detectors) for detectors in self.values())
+        detector_indices = np.arange(last_detector + 1)
         detectors_to_remove = sorted(self.get_events(key))
 
-        # for each detector D, find how many of the detectors_to_remove are less than D
+        # for each detector D, find how many of the detectors_to_remove are <= D
         index_shift = np.searchsorted(detectors_to_remove, detector_indices, side="left")
 
         # shift detector indices down and remove the post-selection key
