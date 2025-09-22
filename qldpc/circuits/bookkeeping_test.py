@@ -49,6 +49,8 @@ def test_records() -> None:
     """Measurement and detector records."""
     base_record = circuits.Record({0: [0]})
     assert base_record.num_events == 1
+    assert str(base_record) == "Record({0: [0]})"
+
     base_record = base_record + circuits.Record({0: [1], 2: [0]})
     assert base_record.num_events == 3
     base_record += {1: [0, 1]}
