@@ -171,7 +171,7 @@ class Record(Mapping[Hashable, list[int]]):
 
 
 class MeasurementRecord(Record):
-    """An record of measurements in a Stim circuit, organized by qubit index."""
+    """An organized record of measurements in a Stim circuit."""
 
     def get_target_rec(self, qubit: Hashable, measurement_index: int = -1) -> stim.target_rec:
         """Retrieve a Stim measurement record target for the given qubit.
@@ -195,24 +195,24 @@ class MeasurementRecord(Record):
 
 
 class DetectorRecord(Record):
-    """An record of detectors in a Stim circuit, organized by parity check index."""
+    """An organized record of detectors in a Stim circuit."""
 
-    def get_detector(self, check: Hashable, detection_index: int = -1) -> int:
-        """Retrieve a Stim detector (by index) for the given parity check.
+    def get_detector(self, key: Hashable, detection_index: int = -1) -> int:
+        """Retrieve a Stim detector (by index) assoiated with the given key.
 
         Args:
-            check: The parity check (by index) whose detector we want.
-            detection_index: An index specifying which detector of the specified parity check we
-                want.  A detection_index of 0 would be the first detector of the parity check, while
-                a detection_index of -1 would be the most recent detector.  Default value: -1.
+            key: The name associated with a sequence of detectors in the record.
+            detection_index: An index specifying which detector in the specified sequence we want.
+                A detection_index of 0 would be the first detector in the sequence, while a
+                detection_index of -1 would be the last detector.  Default value: -1.
 
         Returns:
-            int: The index of the detector we want.
+            int: The index of a detector.
         """
-        detectors = self.get_events(check)
+        detectors = self.get_events(key)
         if not -len(detectors) <= detection_index < len(detectors):
             raise ValueError(
-                f"Invalid detection index {detection_index} for parity check '{check}' with "
-                f"{len(detectors)} detectors"
+                f"Invalid detection index {detection_index} for key '{key}' with {len(detectors)}"
+                " detectors"
             )
         return detectors[detection_index]
