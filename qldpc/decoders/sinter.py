@@ -443,6 +443,18 @@ class CompiledSequentialSinterDecoder(CompiledSinterDecoder):
 
         See help(sinter.CompiledDecoder) for additional information.
         """
+        return (
+            self.decode_shots_to_error(detection_event_data)
+            @ self.dem_arrays.observable_flip_matrix.T
+        )
+
+    def decode_shots_to_error(
+        self, detection_event_data: npt.NDArray[np.uint8]
+    ) -> npt.NDArray[np.uint8]:
+        """Predicts a net circuit error from the given detection events.
+
+        This method accepts and returns boolean data.
+        """
         num_samples, num_detectors = detection_event_data.shape
         assert num_detectors == self.dem_arrays.num_detectors
 
@@ -462,5 +474,4 @@ class CompiledSequentialSinterDecoder(CompiledSinterDecoder):
                 else np.array([decoder.decode(syndrome) for syndrome in syndromes])
             )
 
-        # predicted observable flips
-        return net_error @ self.dem_arrays.observable_flip_matrix.T
+        return net_error
