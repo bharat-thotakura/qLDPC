@@ -360,7 +360,7 @@ class SequentialSinterDecoder(SinterDecoder):
             **decoder_kwargs: Arguments to pass to qldpc.decoders.get_decoder when compiling a
                 custom decoder from a detector error model.
         """
-        self.segment_detectors = list(map(list, segment_detectors))
+        self.segment_detectors = [list(detectors) for detectors in segment_detectors if detectors]
         SinterDecoder.__init__(
             self,
             priors_arg=priors_arg,
@@ -382,26 +382,26 @@ class SequentialSinterDecoder(SinterDecoder):
         segment_decoders = []
         addressed_errors = np.zeros(dem_arrays.num_errors, dtype=bool)
         for detectors in self.segment_detectors:
-            # identify errors that trigger the detectors for this segment
+            # identify errors that
+            # (a) trigger the detectors for this segment, and
+            # (b) have not been addressed by preceding segments
             errors = dem_arrays.detector_flip_matrix[detectors].getnnz(axis=0) != 0
-
-            # remove errors that were dealt with by preceding segments
             errors[addressed_errors] = False
-            segment_errors.append(errors)
 
-            # build the detector error model for this segment
+            # build the detector error model for this segment, and compile a detector for it
             segment_dem_arrays = DetectorErrorModelArrays.from_arrays(
                 dem_arrays.detector_flip_matrix[detectors][:, errors],
                 dem_arrays.observable_flip_matrix[:, errors],
                 dem_arrays.error_probs[errors],
             )
-
-            # compile the decoder for this segment
             segment_decoder = self.get_configured_decoder(segment_dem_arrays)
-            segment_decoders.append(segment_decoder)
 
             # update the history of errors that were dealt with by preceding segments
             addressed_errors |= errors
+
+            # save the errors that this segment addresses, and the decoder for the segment
+            segment_errors.append(errors)
+            segment_decoders.append(segment_decoder)
 
         return CompiledSequentialSinterDecoder(
             dem_arrays,
