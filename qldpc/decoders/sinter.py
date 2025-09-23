@@ -130,14 +130,11 @@ class CompiledSinterDecoder(sinter.CompiledDecoder):
         """
         if hasattr(self.decoder, "decode_batch"):
             predicted_errors = self.decoder.decode_batch(detection_event_data)
-            observable_flips = predicted_errors @ self.dem_arrays.observable_flip_matrix.T
-        else:
-            observable_flips = []
-            for syndrome in detection_event_data:
-                predicted_errors = self.decoder.decode(syndrome)
-                observable_flips.append(
-                    self.dem_arrays.observable_flip_matrix @ predicted_errors
-                )
+            return predicted_errors @ self.dem_arrays.observable_flip_matrix.T % 2
+        observable_flips = []
+        for syndrome in detection_event_data:
+            predicted_errors = self.decoder.decode(syndrome)
+            observable_flips.append(self.dem_arrays.observable_flip_matrix @ predicted_errors)
         return np.asarray(observable_flips, dtype=np.uint8) % 2
 
     def packbits(self, data: npt.NDArray[np.uint8], axis: int = -1) -> npt.NDArray[np.uint8]:
