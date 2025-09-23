@@ -250,14 +250,14 @@ class LookupDecoder(Decoder):
     ) -> Callable[[npt.NDArray[np.int_] | Sequence[int]], float]:
         """Construct a penalty function from independent probabilities of individual errors."""
         error_channel = np.asarray(error_channel)
+        log_probs = np.log(error_channel)
+        log_non_probs = np.log(1 - error_channel)
 
         def penalty_func(error: npt.NDArray[np.int_] | Sequence[int]) -> float:
             """Penalize unlikely combinations of errors."""
             events = np.asarray(error).astype(bool)
-            probability_of_error = float(
-                np.prod(error_channel[events]) * np.prod(1 - error_channel[~events])
-            )
-            return -probability_of_error
+            log_probability_of_error = np.sum(log_probs[events]) + np.sum(log_non_probs[~events])
+            return -float(log_probability_of_error)
 
         return penalty_func
 
