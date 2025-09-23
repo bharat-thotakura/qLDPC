@@ -463,7 +463,10 @@ class CompiledSequentialSinterDecoder(CompiledSinterDecoder):
             self.segment_detectors, self.segment_errors, self.segment_decoders
         ):
             # the bare syndrome plus any corrections we have inferred so far
-            syndromes = (detection_event_data + net_error @ detector_flip_matrix_T)[:, detectors]
+            syndromes = (
+                detection_event_data[:, detectors]
+                + (net_error @ detector_flip_matrix_T)[:, detectors]
+            )
 
             # decode this syndrome and update the net error appropriately
             net_error[:, errors] = (
