@@ -465,7 +465,7 @@ class CompiledSequentialSinterDecoder(CompiledSinterDecoder):
             # the bare syndrome plus any corrections we have inferred so far
             syndromes = (
                 detection_event_data[:, detectors]
-                + (net_error @ detector_flip_matrix_T)[:, detectors]
+                + net_error @ detector_flip_matrix_T[:, detectors]
             )
 
             # decode this syndrome and update the net error appropriately
