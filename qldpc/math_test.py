@@ -24,12 +24,16 @@ import qldpc
 
 
 def test_pauli_strings() -> None:
-    """Stabilizers correctly converted into stim.PauliString objects."""
+    """Conversion between symplectic vectors and stim.PauliString objects."""
     code = qldpc.codes.FiveQubitCode()
     for row, stabilizer in zip(code.matrix, code.get_strings()):
         string = qldpc.math.op_to_string(row)
         assert string == stim.PauliString(stabilizer.replace(" ", ""))
         assert np.array_equal(row, qldpc.math.string_to_op(string))
+
+    string = stim.PauliString.random(5)
+    sign = string.sign
+    assert string == sign * qldpc.math.op_to_string(qldpc.math.string_to_op(string))
 
 
 def test_vectors() -> None:
@@ -42,6 +46,14 @@ def test_vectors() -> None:
     assert np.array_equal(qldpc.math.first_nonzero_cols(np.empty(0, dtype=int)), [])
     assert np.array_equal(qldpc.math.first_nonzero_cols(vectors), [1, 0])
     assert np.array_equal(qldpc.math.first_nonzero_cols(vectors_conj), [0, 0])
+
+
+def test_block_matrix() -> None:
+    eye = np.eye(2, dtype=float)
+    zero = np.zeros_like(eye)
+    blocks = [[eye, 1], [0, eye]]
+    matrix = np.block([[eye, eye], [zero, eye]])
+    assert np.array_equal(qldpc.math.block_matrix(blocks), matrix)
 
 
 def test_log() -> None:
