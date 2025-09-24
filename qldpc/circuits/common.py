@@ -23,8 +23,7 @@ from collections.abc import Callable, Mapping, Sequence
 import numpy as np
 import stim
 
-from qldpc import codes
-from qldpc.math import op_to_string, symplectic_conjugate
+from qldpc import codes, math
 from qldpc.objects import Pauli
 
 
@@ -53,8 +52,8 @@ def get_encoding_tableau(code: codes.QuditCode, *, only_zero: bool = False) -> s
     """
     if only_zero:
         return stim.Tableau.from_stabilizers(
-            [op_to_string(op) for op in code.get_stabilizer_ops(symplectic=True)]
-            + [op_to_string(op) for op in code.get_logical_ops(Pauli.Z, symplectic=True)],
+            [math.op_to_string(op) for op in code.get_stabilizer_ops(symplectic=True)]
+            + [math.op_to_string(op) for op in code.get_logical_ops(Pauli.Z, symplectic=True)],
             allow_redundant=True,
             allow_underconstrained=True,
         )
@@ -76,8 +75,8 @@ def get_encoding_tableau(code: codes.QuditCode, *, only_zero: bool = False) -> s
     # remove logical and gauge operator components
     dual_logical_ops = logical_ops.reshape(2, -1)[::-1, :].reshape(logical_ops.shape)
     dual_gauge_ops = gauge_ops.reshape(2, -1)[::-1, :].reshape(gauge_ops.shape)
-    destab_ops -= destab_ops @ symplectic_conjugate(dual_logical_ops).T @ logical_ops
-    destab_ops -= destab_ops @ symplectic_conjugate(dual_gauge_ops).T @ gauge_ops
+    destab_ops -= destab_ops @ math.symplectic_conjugate(dual_logical_ops).T @ logical_ops
+    destab_ops -= destab_ops @ math.symplectic_conjugate(dual_gauge_ops).T @ gauge_ops
 
     """
     Remove stabilizer factors to enforce that destabilizers commute with each other.  This process
@@ -85,13 +84,13 @@ def get_encoding_tableau(code: codes.QuditCode, *, only_zero: bool = False) -> s
     stabilizer factors, that changes its commutation relations with other destabilizers.
     """
     for row, destab_op in enumerate(destab_ops[1:], start=1):
-        destab_op -= destab_op @ symplectic_conjugate(destab_ops[:row]).T @ stab_ops[:row]
+        destab_op -= destab_op @ math.symplectic_conjugate(destab_ops[:row]).T @ stab_ops[:row]
 
     # construct Pauli strings to hand over to Stim
     matrices_x = [logical_ops[: code.dimension], gauge_ops[: code.gauge_dimension], destab_ops]
     matrices_z = [logical_ops[code.dimension :], gauge_ops[code.gauge_dimension :], stab_ops]
-    strings_x = [op_to_string(op) for matrix in matrices_x for op in matrix]
-    strings_z = [op_to_string(op) for matrix in matrices_z for op in matrix]
+    strings_x = [math.op_to_string(op) for matrix in matrices_x for op in matrix]
+    strings_z = [math.op_to_string(op) for matrix in matrices_z for op in matrix]
     return stim.Tableau.from_conjugated_generators(xs=strings_x, zs=strings_z)
 
 

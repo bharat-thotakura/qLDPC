@@ -33,9 +33,9 @@ import numpy.typing as npt
 import scipy
 import sympy
 
+import qldpc
 from qldpc import abstract
 from qldpc.abstract import DEFAULT_FIELD_ORDER
-from qldpc.math import first_nonzero_cols
 from qldpc.objects import CayleyComplex, ChainComplex, Node, Pauli, PauliXZ, QuditPauli
 
 from .classical import (
@@ -1146,13 +1146,13 @@ class HGPCode(CSSCode):
 
         pivots_a = code_field.Zeros(generator_a.shape)
         pivots_b = code_field.Zeros(generator_b.shape)
-        pivots_a[range(len(pivots_a)), first_nonzero_cols(generator_a)] = 1
-        pivots_b[range(len(pivots_b)), first_nonzero_cols(generator_b)] = 1
+        pivots_a[range(len(pivots_a)), qldpc.math.first_nonzero_cols(generator_a)] = 1
+        pivots_b[range(len(pivots_b)), qldpc.math.first_nonzero_cols(generator_b)] = 1
 
         pivots_a_T = code_field.Zeros(generator_a_T.shape)
         pivots_b_T = code_field.Zeros(generator_b_T.shape)
-        pivots_a_T[range(len(pivots_a_T)), first_nonzero_cols(generator_a_T)] = 1
-        pivots_b_T[range(len(pivots_b_T)), first_nonzero_cols(generator_b_T)] = 1
+        pivots_a_T[range(len(pivots_a_T)), qldpc.math.first_nonzero_cols(generator_a_T)] = 1
+        pivots_b_T[range(len(pivots_b_T)), qldpc.math.first_nonzero_cols(generator_b_T)] = 1
 
         logical_ops_x_l = np.kron(pivots_a, generator_b)
         logical_ops_x_r = np.kron(generator_a_T, pivots_b_T)
@@ -1260,8 +1260,8 @@ class SHPCode(CSSCode):
 
         pivots_x = code_field.Zeros(generator_x.shape)
         pivots_z = code_field.Zeros(generator_z.shape)
-        pivots_x[range(len(pivots_x)), first_nonzero_cols(generator_x)] = 1
-        pivots_z[range(len(pivots_z)), first_nonzero_cols(generator_z)] = 1
+        pivots_x[range(len(pivots_x)), qldpc.math.first_nonzero_cols(generator_x)] = 1
+        pivots_z[range(len(pivots_z)), qldpc.math.first_nonzero_cols(generator_z)] = 1
 
         logical_ops_x = np.kron(pivots_x, generator_z)
         logical_ops_z = np.kron(generator_x, pivots_z)

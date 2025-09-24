@@ -35,16 +35,9 @@ import scipy.sparse
 import scipy.special
 import stim
 
-from qldpc import abstract, decoders, external
+from qldpc import abstract, decoders, external, math
 from qldpc.abstract import DEFAULT_FIELD_ORDER
-from qldpc.math import (
-    IntegerArray,
-    block_matrix,
-    first_nonzero_cols,
-    log_choose,
-    op_to_string,
-    symplectic_conjugate,
-)
+from qldpc.math import IntegerArray
 from qldpc.objects import PAULIS_XZ, Node, Pauli, PauliXZ, QuditPauli
 
 from .distance import get_distance_classical, get_distance_quantum
@@ -815,7 +808,7 @@ class QuditCode(AbstractCode):
         """Is this code a subsystem code?  That is, do all parity checks commute?."""
         if self._is_subsystem_code is None:
             self._is_subsystem_code = bool(
-                np.any(symplectic_conjugate(self.matrix) @ self.matrix.T)
+                np.any(math.symplectic_conjugate(self.matrix) @ self.matrix.T)
             )
         return self._is_subsystem_code
 
@@ -1158,7 +1151,7 @@ class QuditCode(AbstractCode):
 
             # row reduce and identify pivots in the X sector
             matrix = self.canonicalized.matrix
-            all_pivots_x = first_nonzero_cols(matrix)
+            all_pivots_x = math.first_nonzero_cols(matrix)
             pivots_x = all_pivots_x[all_pivots_x < len(self)]
 
             # move the X pivots to the back
@@ -1171,7 +1164,7 @@ class QuditCode(AbstractCode):
             sub_matrix = matrix[len(pivots_x) :, len(self) :]
             sub_matrix = ClassicalCode(sub_matrix).canonicalized.matrix
             matrix[len(pivots_x) :, len(self) :] = sub_matrix
-            all_pivots_z = first_nonzero_cols(sub_matrix)
+            all_pivots_z = math.first_nonzero_cols(sub_matrix)
             pivots_z = all_pivots_z[: len(self) - len(pivots_x) - self.dimension]
 
             # move the stabilizer Z pivots to the back
@@ -1224,14 +1217,14 @@ class QuditCode(AbstractCode):
             permutation_x = _join_slices(cols_sx, cols_gl, cols_sz)
             matrix_x = _with_permuted_qudits(np.vstack([stabilizers_x, checks_x]), permutation_x)
             matrix_x = ClassicalCode(matrix_x).canonicalized.matrix[: num_stabs_x + num_gauges]
-            pivots_gx = first_nonzero_cols(matrix_x)[num_stabs_x:] - num_stabs_x
+            pivots_gx = math.first_nonzero_cols(matrix_x)[num_stabs_x:] - num_stabs_x
             matrix_x = _with_permuted_qudits(matrix_x, np.argsort(permutation_x))
 
             # row reduce Z-type stabilizers + parity checks to place gauge ops at the bottom
             permutation_z = _join_slices(cols_sz, cols_gl, cols_sx)
             matrix_z = _with_permuted_qudits(np.vstack([stabilizers_z, checks_z]), permutation_z)
             matrix_z = ClassicalCode(matrix_z).canonicalized.matrix
-            pivots_gz = first_nonzero_cols(matrix_z)[num_stabs_z:] - num_stabs_z
+            pivots_gz = math.first_nonzero_cols(matrix_z)[num_stabs_z:] - num_stabs_z
             matrix_z = _with_permuted_qudits(matrix_z, np.argsort(permutation_z))
 
             """
@@ -1277,10 +1270,10 @@ class QuditCode(AbstractCode):
             dimension = len(logical_ops) // 2
             logical_ops_x = logical_ops[:dimension]
             logical_ops_z = logical_ops[dimension:]
-            inner_products = symplectic_conjugate(logical_ops_x) @ logical_ops_z.T
+            inner_products = math.symplectic_conjugate(logical_ops_x) @ logical_ops_z.T
             if not np.array_equal(inner_products, np.eye(dimension, dtype=int)):
                 raise ValueError("The given logical operators have incorrect commutation relations")
-            if np.any(symplectic_conjugate(self.matrix) @ logical_ops.T):
+            if np.any(math.symplectic_conjugate(self.matrix) @ logical_ops.T):
                 raise ValueError("The given logical operators violate parity checks")
             if dimension != self.dimension:
                 raise ValueError("An incorrect number of logical operators was provided")
@@ -1333,7 +1326,7 @@ class QuditCode(AbstractCode):
         # if requested, retrieve stabilizer operators of one type only
         if pauli is not None:
             stabilizer_ops = self.get_stabilizer_ops()
-            pivots_x = first_nonzero_cols(stabilizer_ops) < len(self)
+            pivots_x = math.first_nonzero_cols(stabilizer_ops) < len(self)
             return stabilizer_ops[pivots_x if pauli is Pauli.X else ~pivots_x]
 
         if not self.is_subsystem_code:
@@ -1341,10 +1334,10 @@ class QuditCode(AbstractCode):
 
         if self._stabilizer_ops is None or recompute:
             stabs_and_gauges = self.canonicalized.matrix
-            stabs_and_logs = symplectic_conjugate(stabs_and_gauges).null_space()
+            stabs_and_logs = math.symplectic_conjugate(stabs_and_gauges).null_space()
             stabs_and_gauges_and_logs = np.vstack([stabs_and_gauges, stabs_and_logs])
             assert isinstance(stabs_and_gauges_and_logs, galois.FieldArray)
-            self._stabilizer_ops = symplectic_conjugate(stabs_and_gauges_and_logs).null_space()
+            self._stabilizer_ops = math.symplectic_conjugate(stabs_and_gauges_and_logs).null_space()
 
         if canonicalized and not _is_canonicalized(self._stabilizer_ops):
             self._stabilizer_ops = self.get_stabilizer_ops(recompute=True)
@@ -1611,7 +1604,7 @@ class QuditCode(AbstractCode):
             """Transform the given Pauli strings."""
             new_ops = []
             for op in ops:
-                string = op_to_string(op)
+                string = math.op_to_string(op)
                 xs_zs = tableau(string).to_numpy()
                 new_ops.append(np.concatenate(xs_zs))
             return self.field(new_ops)
@@ -1808,11 +1801,11 @@ class QuditCode(AbstractCode):
 
         # construct decoders
         decoder = decoders.get_decoder(
-            symplectic_conjugate(self.matrix).view(np.ndarray), **decoder_kwargs
+            math.symplectic_conjugate(self.matrix).view(np.ndarray), **decoder_kwargs
         )
         if not isinstance(decoder, decoders.DirectDecoder):
             decoder = decoders.DirectDecoder.from_indirect(
-                decoder, symplectic_conjugate(self.matrix).view(np.ndarray)
+                decoder, math.symplectic_conjugate(self.matrix).view(np.ndarray)
             )
 
         # identify logical operators
@@ -1875,7 +1868,7 @@ class QuditCode(AbstractCode):
 
             error = np.concatenate([error_x, error_z])
             residual = decoder.decode(error).view(self.field)
-            if np.any(logical_ops @ symplectic_conjugate(residual)):
+            if np.any(logical_ops @ math.symplectic_conjugate(residual)):
                 num_failures += 1
 
         infidelity = num_failures / num_samples
@@ -1994,7 +1987,7 @@ class CSSCode(QuditCode):
     @functools.cached_property
     def matrix(self) -> galois.FieldArray:
         """Overall parity check matrix."""
-        return block_matrix([[self.matrix_x, 0], [0, self.matrix_z]]).view(self.field)
+        return math.block_matrix([[self.matrix_x, 0], [0, self.matrix_z]]).view(self.field)
 
     @property
     def graph_x(self) -> nx.DiGraph:
@@ -2203,7 +2196,7 @@ class CSSCode(QuditCode):
             matrix_z = self.canonicalized.matrix_z
 
             # identify pivots in the X sector, and move X pivots to the back
-            pivots_x = first_nonzero_cols(matrix_x)
+            pivots_x = math.first_nonzero_cols(matrix_x)
             other_x = [qq for qq in range(len(self)) if qq not in pivots_x]
             permutation: list[int] = other_x + list(pivots_x)
             matrix_x = matrix_x[:, permutation]
@@ -2212,7 +2205,7 @@ class CSSCode(QuditCode):
 
             # row reduce and identify pivots in the Z sector, and move Z pivots to the back
             matrix_z = matrix_z.row_reduce()
-            pivots_z = first_nonzero_cols(matrix_z)
+            pivots_z = math.first_nonzero_cols(matrix_z)
             other_z = [qq for qq in range(len(self)) if qq not in pivots_z]
             permutation = other_z + list(pivots_z)
             matrix_x = matrix_x[:, permutation]
@@ -2261,14 +2254,14 @@ class CSSCode(QuditCode):
             permutation_x = _join_slices(cols_sx, cols_gl, cols_sz)
             matrix_x = np.vstack([stabilizers_x, checks_x])[:, permutation_x].view(self.field)
             matrix_x = ClassicalCode(matrix_x).canonicalized.matrix
-            pivots_gx = first_nonzero_cols(matrix_x)[num_stabs_x:] - num_stabs_x
+            pivots_gx = math.first_nonzero_cols(matrix_x)[num_stabs_x:] - num_stabs_x
             matrix_x = matrix_x[:, np.argsort(permutation_x)]
 
             # row reduce Z-type stabilizers + parity checks to ensure that gauge ops at the bottom
             permutation_z = _join_slices(cols_sz, cols_gl, cols_sx)
             matrix_z = np.vstack([stabilizers_z, checks_z])[:, permutation_z].view(self.field)
             matrix_z = ClassicalCode(matrix_z).canonicalized.matrix
-            pivots_gz = first_nonzero_cols(matrix_z)[num_stabs_z:] - num_stabs_z
+            pivots_gz = math.first_nonzero_cols(matrix_z)[num_stabs_z:] - num_stabs_z
             matrix_z = matrix_z[:, np.argsort(permutation_z)]
 
             """
@@ -2973,7 +2966,7 @@ def _is_canonicalized(matrix: npt.NDArray[np.int_]) -> bool:
     """Is the given matrix in canonical (row-reduced) form?"""
     return all(
         matrix[row, pivot] and not np.any(matrix[:row, pivot])
-        for row, pivot in enumerate(first_nonzero_cols(matrix))
+        for row, pivot in enumerate(math.first_nonzero_cols(matrix))
     )
 
 
@@ -3028,7 +3021,7 @@ def _get_error_probs_by_weight(
     log_error_rate = np.log(error_rate)
     log_one_minus_error_rate = np.log(1 - error_rate)
     log_probs = [
-        log_choose(block_length, kk)
+        math.log_choose(block_length, kk)
         + kk * log_error_rate
         + (block_length - kk) * log_one_minus_error_rate
         for kk in range(max_weight + 1)

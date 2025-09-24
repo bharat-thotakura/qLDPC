@@ -27,8 +27,7 @@ import numpy as np
 import pytest
 import scipy.sparse
 
-from qldpc import codes, decoders
-from qldpc.math import symplectic_conjugate
+from qldpc import codes, decoders, math
 
 
 @functools.cache
@@ -145,26 +144,26 @@ def test_quantum_decoding(pytestconfig: pytest.Config) -> None:
     error = code.field.Zeros(2 * len(code))
     error[[qubit_a, qubit_a + len(code)]] = pauli_a
     error[[qubit_b, qubit_b + len(code)]] = pauli_b
-    syndrome = symplectic_conjugate(code.matrix) @ error
+    syndrome = math.symplectic_conjugate(code.matrix) @ error
 
     decoder: decoders.Decoder
     decoder = decoders.GUFDecoder(code.matrix, symplectic=True)
     decoded_error = decoder.decode(syndrome).view(code.field)
-    assert np.array_equal(syndrome, symplectic_conjugate(code.matrix) @ decoded_error)
+    assert np.array_equal(syndrome, math.symplectic_conjugate(code.matrix) @ decoded_error)
 
     decoder = decoders.LookupDecoder(code.matrix, symplectic=True, max_weight=2)
     decoded_error = decoder.decode(syndrome).view(code.field)
-    assert np.array_equal(syndrome, symplectic_conjugate(code.matrix) @ decoded_error)
+    assert np.array_equal(syndrome, math.symplectic_conjugate(code.matrix) @ decoded_error)
 
     decoder = decoders.LookupDecoder(
         code.matrix, symplectic=True, max_weight=2, penalty_func=lambda vec: np.count_nonzero(vec)
     )
     decoded_error = decoder.decode(syndrome).view(code.field)
-    assert np.array_equal(syndrome, symplectic_conjugate(code.matrix) @ decoded_error)
+    assert np.array_equal(syndrome, math.symplectic_conjugate(code.matrix) @ decoded_error)
 
     decoder = decoders.WeightedLookupDecoder(code.matrix, symplectic=True, max_weight=2)
     decoded_error = decoder.decode(syndrome).view(code.field)
-    assert np.array_equal(syndrome, symplectic_conjugate(code.matrix) @ decoded_error)
+    assert np.array_equal(syndrome, math.symplectic_conjugate(code.matrix) @ decoded_error)
 
 
 def test_penalty_func() -> None:

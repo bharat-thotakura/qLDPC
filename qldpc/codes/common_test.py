@@ -27,8 +27,7 @@ import networkx as nx
 import numpy as np
 import pytest
 
-from qldpc import codes, external
-from qldpc.math import block_matrix, symplectic_conjugate
+from qldpc import codes, external, math
 from qldpc.objects import Pauli
 
 ####################################################################################################
@@ -409,7 +408,7 @@ def get_codes_for_testing_ops() -> Iterator[codes.CSSCode]:
 def get_symplectic_form(half_dimension: int, field: type[galois.FieldArray]) -> galois.FieldArray:
     """Get the symplectic form over a given field."""
     identity = field.Identity(half_dimension)
-    return block_matrix([[0, identity], [-identity, 0]]).view(field)
+    return math.block_matrix([[0, identity], [-identity, 0]]).view(field)
 
 
 def test_qudit_ops() -> None:
@@ -431,13 +430,13 @@ def test_qudit_ops() -> None:
         stabilizer_ops = code.get_stabilizer_ops()
         logical_ops = code.get_logical_ops()
         gauge_ops = code.get_gauge_ops()
-        assert not np.any(symplectic_conjugate(stabilizer_ops) @ stabilizer_ops.T)
+        assert not np.any(math.symplectic_conjugate(stabilizer_ops) @ stabilizer_ops.T)
         assert np.array_equal(
-            symplectic_conjugate(gauge_ops) @ gauge_ops.T,
+            math.symplectic_conjugate(gauge_ops) @ gauge_ops.T,
             get_symplectic_form(code.gauge_dimension, code.field),
         )
         assert np.array_equal(
-            symplectic_conjugate(logical_ops) @ logical_ops.T,
+            math.symplectic_conjugate(logical_ops) @ logical_ops.T,
             get_symplectic_form(code.dimension, code.field),
         )
 
@@ -563,8 +562,10 @@ def test_css_ops(pytestconfig: pytest.Config) -> None:
 
     # identify stabilizer group
     code._stabilizer_ops = None
-    assert not np.any(code.get_stabilizer_ops() @ symplectic_conjugate(code.get_logical_ops()).T)
-    assert not np.any(code.get_stabilizer_ops() @ symplectic_conjugate(code.get_gauge_ops()).T)
+    assert not np.any(
+        code.get_stabilizer_ops() @ math.symplectic_conjugate(code.get_logical_ops()).T
+    )
+    assert not np.any(code.get_stabilizer_ops() @ math.symplectic_conjugate(code.get_gauge_ops()).T)
 
     # successfully construct and reduce logical operators in a code with "over-complete" checks
     dist = 4

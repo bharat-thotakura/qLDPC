@@ -22,8 +22,7 @@ import pytest
 import stim
 import sympy
 
-from qldpc import circuits, codes
-from qldpc.math import symplectic_conjugate
+from qldpc import circuits, codes, math
 from qldpc.objects import Pauli
 
 
@@ -92,5 +91,5 @@ def assert_valid_syndome_measurement(
 
     # compare against the expected syndrome
     error_xz = code.field([pauli.value for pauli in errors]).T.ravel()
-    expected_syndrome = code.matrix @ symplectic_conjugate(error_xz)
+    expected_syndrome = code.matrix @ math.symplectic_conjugate(error_xz)
     assert np.array_equal(expected_syndrome, syndrome)
