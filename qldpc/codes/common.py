@@ -32,7 +32,6 @@ import numpy as np
 import numpy.typing as npt
 import scipy.linalg
 import scipy.sparse
-import scipy.special
 import stim
 
 from qldpc import abstract, decoders, external, math
