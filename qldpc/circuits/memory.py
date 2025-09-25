@@ -111,8 +111,8 @@ def get_memory_experiment(
             logical operators (or X-type logicals, if basis is None).
         basis: Should be Pauli.X, Pauli.Z, or None to indicate which type of logical operators to
             track (where "None" means "both X and Z").  Default: Pauli.X.
-        num_rounds: Total number of round of syndome measurements to perform in a QEC cycle.  Must
-            be at least 1.  Default: 1.
+        num_rounds: The number of syndome measurement rounds to perform in one logical QEC cycle.
+            Must be at least 1.  Default: 1.
         noise_model: The noise model to apply to the circuit after construction, or None to return a
             noiseless circuit.  Default: None.
         qubit_ids: A QubitIDs object specifying the index of data and check qubits.  Defaults to
@@ -159,7 +159,7 @@ def get_memory_experiment(
         qec_cycle = noise_model.noisy_circuit(qec_cycle)
         readout = noise_model.noisy_circuit(readout)
 
-    # if tracking all logical operators, only the QEC cycle is noisy
+    # if tracking all logical operators, only the logical QEC cycle is noisy
     if basis is None:
         if noise_model is not None:
             qec_cycle = noise_model.noisy_circuit(qec_cycle)
@@ -186,7 +186,7 @@ def get_memory_experiment_parts(
 
     Returns:
         initialization: A circuit that sets the coordinates and initializes the state of data qubits.
-        qec_cycle: A circuit for one QEC cycle, with num_rounds rounds of syndrome measurement.
+        qec_cycle: A circuit for one logical QEC cycle, with num_rounds syndrome measurements.
         readout: A circuit that reads out final stabilizers.
         measurement_record: A record of all measurements in the above circuits.
         detector_record: A record of all detectors in the above circuits.
@@ -250,7 +250,7 @@ def _get_basis_memory_experiment_parts(
     state_prep = stim.Circuit()
     state_prep.append(f"R{basis}", data_ids)
 
-    # build a QEC cycle
+    # build a logical QEC cycle
     qec_cycle, measurement_record, detector_record = _get_qec_cycle(
         code, num_rounds, qubit_ids, basis_check_ids, syndrome_measurement_strategy
     )
@@ -309,7 +309,7 @@ def _get_combined_memory_simulation_parts(
     # noiselessly prepare all logical qubits in Bell states with ancillas
     state_prep = get_logical_bell_prep(code, data_ids, ancilla_ids)
 
-    # build a QEC cycle
+    # build a logical QEC cycle
     qec_cycle, measurement_record, detector_record = _get_qec_cycle(
         code, num_rounds, qubit_ids, check_ids, syndrome_measurement_strategy
     )
@@ -477,11 +477,11 @@ def _get_qec_cycle(
     check_ids: Collection[int],
     syndrome_measurement_strategy: SyndromeMeasurementStrategy,
 ) -> tuple[stim.Circuit, MeasurementRecord, DetectorRecord]:
-    """Build a circuit for num_rounds noiseless QEC cycles of a given code.
+    """Build a circuit of num_rounds noiseless syndrome measurements for a given code.
 
     Args:
-        code: The code for which we are building QEC cycles.
-        num_rounds: The number of QEC cycles in the final circuit.
+        code: The code for which we are building a logical QEC cycle.
+        num_rounds: The number of syndrome measurement rounds in one logical QEC cycle.
         qubit_ids: A QubitIDs object specifying the index of data and check qubits.
         check_ids: The check qubits that measure stabilizers to annotate with detectors.  Must be a
             subset of qubit_ids.check (though this requirement is not verified).
@@ -489,11 +489,11 @@ def _get_qec_cycle(
             round of QEC measures the parity checks of the code.
 
     Returns:
-        stim.Circuit: The noiseless circuit of num_rounds QEC cycles.
+        stim.Circuit: The noiseless circuit of num_rounds syndorme measurements.
         MeasurementRecord: The record of all measurements in the constructed circuit.
         DetectorRecord: The record of all detectors in the constructed circuit.
     """
-    one_round, cycle_measurement_record = syndrome_measurement_strategy.get_circuit(code, qubit_ids)
+    one_round, round_measurement_record = syndrome_measurement_strategy.get_circuit(code, qubit_ids)
 
     circuit = stim.Circuit()
     measurement_record = MeasurementRecord()
@@ -501,7 +501,7 @@ def _get_qec_cycle(
 
     # apply first round of QEC and detectors
     circuit.append(one_round)
-    measurement_record.append(cycle_measurement_record)
+    measurement_record.append(round_measurement_record)
     for kk, check_id in enumerate(check_ids):
         circuit.append("DETECTOR", [measurement_record.get_target_rec(check_id)], (0, 0, kk))
     detector_record.append({check_id: [dd] for dd, check_id in enumerate(check_ids)})
@@ -509,7 +509,7 @@ def _get_qec_cycle(
     # apply following repeated rounds of QEC and detectors
     if num_rounds > 1:
         repeat_circuit = one_round.copy()
-        measurement_record.append(cycle_measurement_record)
+        measurement_record.append(round_measurement_record)
         repeat_circuit.append("SHIFT_COORDS", [], (1, 0, 0))
         for kk, check_id in enumerate(check_ids):
             targets = [
@@ -520,7 +520,7 @@ def _get_qec_cycle(
         circuit.append(stim.CircuitRepeatBlock(num_rounds - 1, repeat_circuit))
 
         # update the measurement and detector records to account for repetitions
-        measurement_record.append(cycle_measurement_record, repeat=num_rounds - 2)
+        measurement_record.append(round_measurement_record, repeat=num_rounds - 2)
         detector_record.append(
             {check_id: [dd] for dd, check_id in enumerate(check_ids)}, repeat=num_rounds - 1
         )
