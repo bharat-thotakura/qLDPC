@@ -33,7 +33,7 @@ GROUPNAMES_URL = "https://people.maths.bris.ac.uk/~matyd/GroupNames/"
 @qldpc.cache.use_disk_cache("group_generators")
 def get_generators(group: str) -> GENERATORS_LIST:
     """Retrieve GAP group generators."""
-    group = group.strip().replace(" ", "")  # standardize the group name
+    group = "".join(group.split())  # strip whitespace from the group name
 
     # try retrieving a known group
     if generators := KNOWN_GROUPS.get(group):
