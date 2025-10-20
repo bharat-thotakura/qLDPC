@@ -403,11 +403,11 @@ class Group:
     @staticmethod
     def from_name(name: str) -> Group:
         """Named group in the GAP computer algebra system."""
-        standardized_name = name.strip().replace(" ", "")
-        if standardized_name == "SmallGroup(1,1)":
+        name = name.strip().replace(" ", "")  # standardize the group name
+        if name == "SmallGroup(1,1)":
             return TrivialGroup()
-        generators = [GroupMember(gen) for gen in external.groups.get_generators(standardized_name)]
-        return Group(*generators, name=standardized_name)
+        generators = [GroupMember(gen) for gen in external.groups.get_generators(name)]
+        return Group(*generators, name=name)
 
     def to_gap_group(self) -> str:
         """Convert a Group into a GAP group."""
