@@ -25,7 +25,10 @@ import qldpc.cache
 import qldpc.external.gap
 
 
-@qldpc.cache.use_disk_cache("codes")
+@qldpc.cache.use_disk_cache(
+    "codes",
+    key_func=lambda code: "".join(code.split()),  # strip whitespace from code names
+)
 def get_code(code: str) -> tuple[list[list[int]], int | None]:
     """Retrieve a group from GAP."""
     qldpc.external.gap.require_package("GUAVA")

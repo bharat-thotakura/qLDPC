@@ -30,11 +30,12 @@ GENERATORS_LIST = list[list[tuple[int, ...]]]
 GROUPNAMES_URL = "https://people.maths.bris.ac.uk/~matyd/GroupNames/"
 
 
-@qldpc.cache.use_disk_cache("group_generators")
+@qldpc.cache.use_disk_cache(
+    "group_generators",
+    key_func=lambda group: "".join(group.split()),  # strip whitespace from group names
+)
 def get_generators(group: str) -> GENERATORS_LIST:
     """Retrieve GAP group generators."""
-    group = "".join(group.split())  # strip whitespace from the group name
-
     # try retrieving a known group
     if generators := KNOWN_GROUPS.get(group):
         return generators
@@ -223,7 +224,10 @@ def maybe_get_webpage(order: int) -> str | None:
         return None
 
 
-@qldpc.cache.use_disk_cache("idempotents")
+@qldpc.cache.use_disk_cache(
+    "idempotents",
+    key_func=lambda group, field: ("".join(group.split()), field),  # strip whitespace from group
+)
 def get_primitive_central_idempotents(
     group: str, field: int
 ) -> tuple[tuple[tuple[int, tuple[tuple[int, ...], ...]], ...], ...] | None:
