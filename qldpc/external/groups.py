@@ -239,8 +239,8 @@ def get_primitive_central_idempotents(
     - cannot be decomposed into a sum of two nonzero orthogonal idempotents.
     Two idempotents g, h are orthogonal if g * h = h * g 0.
 
-    Intuitively, primitive central idempotents idempotents act like projectors onto orthogonal
-    components of a ring.
+    Intuitively, primitive central idempotents act like projectors onto orthogonal components of a
+    ring.
 
     See https://en.wikipedia.org/wiki/Idempotent_(ring_theory).
 
