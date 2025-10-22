@@ -32,7 +32,7 @@ GROUPNAMES_URL = "https://people.maths.bris.ac.uk/~matyd/GroupNames/"
 
 @qldpc.cache.use_disk_cache(
     "group_generators",
-    key_func=lambda group: "".join(group.split()),  # strip whitespace from group names
+    key_func=lambda group: "".join(group.split()),  # strip whitespace
 )
 def get_generators(group: str) -> GENERATORS_LIST:
     """Retrieve GAP group generators."""
@@ -58,6 +58,14 @@ def get_generators(group: str) -> GENERATORS_LIST:
     else:
         message.append("- group not indexed by GroupNames.org")
     raise ValueError("\n".join(message))
+
+
+# @qldpc.cache.use_disk_cache(
+#     "magma_group_generators",
+#     key_func=lambda group: "".join(group.split()),  # strip whitespace
+# )
+# def get_generators_from_magma() -> GENERATORS_LIST:
+#     """Retrieve group generators from MAGMA."""
 
 
 @qldpc.cache.use_disk_cache("small_group_number")
@@ -121,26 +129,8 @@ def maybe_get_generators_from_gap(group: str) -> GENERATORS_LIST | None:
         "gens := GeneratorsOfGroup(perm_group);",
         r'for gen in gens do Print(gen, "\n"); od;',
     ]
-    generators_str = qldpc.external.gap.get_output(*commands)
-
-    # collect generators
-    generators = []
-    for line in generators_str.splitlines():
-        if not line.strip():
-            continue
-
-        # extract list of cycles, where each cycle is a tuple of integers
-        cycles_str = line[1:-1].split(")(")
-        try:
-            cycles = [tuple(map(int, cycle.split(","))) for cycle in cycles_str if cycle]
-        except ValueError:
-            raise ValueError(f"Cannot extract cycles from string: {line}")
-
-        # decrement integers in the cycle by 1 to account for 0-indexing
-        cycles = [tuple(index - 1 for index in cycle) for cycle in cycles]
-        generators.append(cycles)
-
-    return generators
+    permutations = qldpc.external.gap.get_output(*commands)
+    return parse_gap_permutations(permutations)
 
 
 def maybe_get_generators_from_groupnames(group: str) -> GENERATORS_LIST | None:
@@ -171,20 +161,30 @@ def maybe_get_generators_from_groupnames(group: str) -> GENERATORS_LIST | None:
     match = re.search(r">((?:.|\n)*?)<\/pre>", section)
     if match is None:
         raise ValueError(f"Generators for group {order},{index} not found")
-    gen_strings = match.group(1).split("<br>\n")
+    permutations = match.group(1).replace("<br>", "")
+    return parse_gap_permutations(permutations, cycle_sep=" ")
 
-    # build generators
-    generators = []
-    for string in gen_strings:
-        cycles_str = string[1:-1].split(")(")
-        cycles = [tuple(map(int, cycle.split())) for cycle in cycles_str]
+
+def parse_gap_permutations(permutations: str, cycle_sep: str = ",") -> GENERATORS_LIST:
+    """Parse newline-separated GAP permutations.
+
+    As an example, the permutation "(1,2)(3,4)" becomes [(0, 1), (2, 3)].
+    This function returns a list of permutations; one for each line in the input string.
+    """
+    parsed_permutations = []
+    for line in permutations.splitlines():
+        # extract list of cycles, where each cycle is a tuple of integers
+        cycle_strings = line.strip()[1:-1].split(")(")
+        try:
+            cycles = [tuple(map(int, cycle.split(cycle_sep))) for cycle in cycle_strings if cycle]
+        except ValueError:
+            raise ValueError(f"Cannot extract cycles from string: {line}")
 
         # decrement integers in the cycle by 1 to account for 0-indexing
         cycles = [tuple(index - 1 for index in cycle) for cycle in cycles]
+        parsed_permutations.append(cycles)
 
-        generators.append(cycles)
-
-    return generators
+    return parsed_permutations
 
 
 def get_group_url(order: int, index: int) -> str | None:
@@ -226,7 +226,7 @@ def maybe_get_webpage(order: int) -> str | None:
 
 @qldpc.cache.use_disk_cache(
     "idempotents",
-    key_func=lambda group, field: ("".join(group.split()), field),  # strip whitespace from group
+    key_func=lambda group, field: ("".join(group.split()), field),  # strip whitespace
 )
 def get_primitive_central_idempotents(
     group: str, field: int

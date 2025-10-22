@@ -27,7 +27,7 @@ import qldpc.external.gap
 
 @qldpc.cache.use_disk_cache(
     "codes",
-    key_func=lambda code: "".join(code.split()),  # strip whitespace from code names
+    key_func=lambda code: "".join(code.split()),  # strip whitespace
 )
 def get_code(code: str) -> tuple[list[list[int]], int | None]:
     """Retrieve a group from GAP."""

@@ -578,33 +578,38 @@ class ClassicalCode(AbstractCode):
     @staticmethod
     def from_name(name: str) -> ClassicalCode:
         """Named code in the GAP computer algebra system."""
-        standardized_name = name.strip().replace(" ", "")  # remove whitespace
+        standardized_name = name.strip().replace(" ", "")  # strip whitespace
         matrix, field = external.codes.get_code(standardized_name)
         code = ClassicalCode(matrix, field)
         setattr(code, "_name", name)
         return code
 
-    def get_automorphism_group(self) -> abstract.Group:
-        """Get the automorphism group of this code.  WARNING: this is potentially very slow.
+    def get_automorphism_group(self, with_magma: bool = False) -> abstract.Group:
+        """Get the automorphism group of this code.
 
         The auomorphism group of a classical linear code is the group of permutations of bits that
         preserve the code space.
         """
         matrix_str = self.canonicalized.matrix_as_string()
+        # if with_magma:
+        #     rows, cols = self.canonicalized.matrix.shape
+        #     magma_matrix_str = f"Matrix(GF({self.field.order}), {rows}, {cols}, {matrix_str})"
+        #     magma_query = f"AutomorphismGroup(LinearCode({magma_matrix_str}));"
+        #     print(magma_query)
+        #     exit()
+
         code_str = f"CheckMatCode({matrix_str}, GF({self.field.order}))"
 
         # try GAP/GAUAVA's AutomorphismGroup method
         if self.field.order == 2:
             try:
-                group_str = "AutomorphismGroup"
-                return abstract.Group.from_name(f"{group_str}({code_str})")
+                return abstract.Group.from_name(f"AutomorphismGroup({code_str})")
             except ValueError as error:
                 if "Error encountered when running GAP" not in str(error):
                     raise
 
         # fall back to GAP/GAUAVA's PermutationAutomorphismGroup method
-        group_str = "PermutationAutomorphismGroup"
-        return abstract.Group.from_name(f"{group_str}({code_str})")
+        return abstract.Group.from_name(f"PermutationAutomorphismGroup({code_str})")
 
     @staticmethod
     def stack(*codes: ClassicalCode) -> ClassicalCode:

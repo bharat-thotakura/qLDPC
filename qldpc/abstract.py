@@ -403,7 +403,7 @@ class Group:
     @staticmethod
     def from_name(name: str) -> Group:
         """Named group in the GAP computer algebra system."""
-        name = "".join(name.split())  # strip whitespace from group names
+        name = "".join(name.split())  # strip whitespace
         if name == "SmallGroup(1,1)":
             return TrivialGroup()
         generators = [GroupMember(gen) for gen in external.groups.get_generators(name)]
