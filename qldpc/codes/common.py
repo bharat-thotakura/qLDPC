@@ -584,20 +584,13 @@ class ClassicalCode(AbstractCode):
         setattr(code, "_name", name)
         return code
 
-    def get_automorphism_group(self, with_magma: bool = False) -> abstract.Group:
+    def get_automorphism_group(self) -> abstract.Group:
         """Get the automorphism group of this code.
 
         The auomorphism group of a classical linear code is the group of permutations of bits that
         preserve the code space.
         """
         matrix_str = self.canonicalized.matrix_as_string()
-        # if with_magma:
-        #     rows, cols = self.canonicalized.matrix.shape
-        #     magma_matrix_str = f"Matrix(GF({self.field.order}), {rows}, {cols}, {matrix_str})"
-        #     magma_query = f"AutomorphismGroup(LinearCode({magma_matrix_str}));"
-        #     print(magma_query)
-        #     exit()
-
         code_str = f"CheckMatCode({matrix_str}, GF({self.field.order}))"
 
         # try GAP/GAUAVA's AutomorphismGroup method

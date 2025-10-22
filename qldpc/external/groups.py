@@ -60,14 +60,6 @@ def get_generators(group: str) -> GENERATORS_LIST:
     raise ValueError("\n".join(message))
 
 
-# @qldpc.cache.use_disk_cache(
-#     "magma_group_generators",
-#     key_func=lambda group: "".join(group.split()),  # strip whitespace
-# )
-# def get_generators_from_magma() -> GENERATORS_LIST:
-#     """Retrieve group generators from MAGMA."""
-
-
 @qldpc.cache.use_disk_cache("small_group_number")
 def get_small_group_number(order: int) -> int:
     """Get the number of 'SmallGroup's of a given order."""
