@@ -28,11 +28,17 @@ from qldpc import circuits, codes, external
 
 def test_transversal_ops() -> None:
     """Construct SWAP-transversal logical Cliffords of a code."""
-    code = codes.FiveQubitCode()
+    code = codes.C4Code()
 
-    for local_gates in [("SWAP", "S"), ("SWAP", "H"), ("SWAP", "SQRT_X"), ("SWAP", "H", "S")]:
+    for local_gates in [
+        ["SWAP"],
+        ["SWAP", "S"],
+        ["SWAP", "H"],
+        ["SWAP", "SQRT_X"],
+        ["SWAP", "H", "S"],
+    ]:
         transversal_ops = circuits.get_transversal_ops(code, local_gates)
-        assert len(transversal_ops) == len(local_gates) - 1
+        assert len(transversal_ops) == len(local_gates) + 1
 
     with pytest.raises(ValueError, match="Local Clifford gates"):
         circuits.get_transversal_automorphism_group(code, ["SQRT_Y"])
@@ -68,16 +74,17 @@ def test_finding_circuit(pytestconfig: pytest.Config) -> None:
     )
     logical_circuit = stim.Circuit(f"{logical_op} 0")
 
-    # context: ContextManager
     context: pytest.WarningsRecorder | contextlib.nullcontext[None]
     if external.gap.is_installed():  # pragma: no cover
         # randomly permute the qubits to switch things up!
         new_matrix = code.matrix.reshape(-1, 5)[:, np.random.permutation(5)].reshape(-1, 10)
         code = codes.QuditCode(new_matrix)
-        context = pytest.warns(UserWarning, match="with_magma=True")
-    else:  # pragma: no cover
-        context = contextlib.nullcontext()
 
+    context = (
+        pytest.warns(UserWarning, match="with_magma=True")
+        if code != codes.FiveQubitCode()
+        else contextlib.nullcontext()
+    )
     with context:
         # construct physical circuit for the logical operation
         physical_circuit = circuits.get_transversal_circuit(code, logical_circuit)

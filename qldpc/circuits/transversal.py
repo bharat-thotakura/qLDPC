@@ -21,6 +21,7 @@ import collections
 from collections.abc import Collection, Sequence
 
 import numpy as np
+import numpy.typing as npt
 import stim
 
 from qldpc import abstract, cache, codes
@@ -115,20 +116,32 @@ def get_transversal_automorphism_group(
     logical Pauli group for the deformed QuditCode.
     """
     parity_checks = code.matrix if not deform_code else symplectic_conjugate(code.get_logical_ops())
-    matrix_x = parity_checks.reshape(-1, 2, len(code))[:, 0, :]
-    matrix_z = parity_checks.reshape(-1, 2, len(code))[:, 1, :]
-    if not local_gates or local_gates == {"H"}:
-        # swapping sectors = swapping X <--> Z
-        matrix = np.hstack([matrix_x, matrix_z])
-    elif local_gates == {"S"}:
-        # swapping sectors = swapping X <--> Y
-        matrix = np.hstack([matrix_z, matrix_x + matrix_z])
-    elif local_gates == {"SQRT_X"}:
-        # swapping sectors = swapping Y <--> Z
-        matrix = np.hstack([matrix_x, matrix_x + matrix_z])
+
+    if not local_gates:
+        # we are looking for transversal gates involving only two-qubit SWAPs
+        matrix: npt.NDArray[np.int_] = parity_checks
+        if isinstance(
+            canonicalized_code := codes.QuditCode(matrix).canonicalized.maybe_to_css(),
+            codes.CSSCode,
+        ) and np.array_equal(canonicalized_code.matrix_x, canonicalized_code.matrix_z):
+            matrix = canonicalized_code.matrix_x
+
     else:
-        # we have a complete local Clifford gate set that can arbitrarily permute Pauli ops
-        matrix = np.hstack([matrix_x, matrix_z, matrix_x + matrix_z])
+        # we are looking for transversal gates involving two-qubit SWAPs and single-qubit Cliffords
+        matrix_x = parity_checks.reshape(-1, 2, len(code))[:, 0, :]
+        matrix_z = parity_checks.reshape(-1, 2, len(code))[:, 1, :]
+        if local_gates == {"H"}:
+            # swapping sectors = swapping X <--> Z
+            matrix = np.hstack([matrix_x, matrix_z])
+        elif local_gates == {"S"}:
+            # swapping sectors = swapping X <--> Y
+            matrix = np.hstack([matrix_z, matrix_x + matrix_z])
+        elif local_gates == {"SQRT_X"}:
+            # swapping sectors = swapping Y <--> Z
+            matrix = np.hstack([matrix_x, matrix_x + matrix_z])
+        else:
+            # we have a complete local Clifford gate set that can arbitrarily permute Pauli ops
+            matrix = np.hstack([matrix_x, matrix_z, matrix_x + matrix_z])
 
     # compute the automorphism group of an instrumental classical code
     instrumental_code = codes.ClassicalCode(matrix)
