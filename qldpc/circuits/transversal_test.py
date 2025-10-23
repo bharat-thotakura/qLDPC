@@ -74,7 +74,6 @@ def test_finding_circuit(pytestconfig: pytest.Config) -> None:
     )
     logical_circuit = stim.Circuit(f"{logical_op} 0")
 
-    context: pytest.WarningsRecorder | contextlib.nullcontext[None]
     if external.gap.is_installed():  # pragma: no cover
         # randomly permute the qubits to switch things up!
         new_matrix = code.matrix.reshape(-1, 5)[:, np.random.permutation(5)].reshape(-1, 10)
