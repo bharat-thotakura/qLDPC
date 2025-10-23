@@ -164,7 +164,7 @@ def parse_gap_permutations(permutations: str, cycle_sep: str = ",") -> GENERATOR
     This function returns a list of permutations; one for each line in the input string.
     """
     parsed_permutations = []
-    for line in permutations.splitlines():
+    for line in permutations.strip().splitlines():
         # extract list of cycles, where each cycle is a tuple of integers
         cycle_strings = line.strip()[1:-1].split(")(")
         try:
