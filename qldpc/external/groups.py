@@ -20,6 +20,7 @@ from __future__ import annotations
 import re
 import urllib.error
 import urllib.request
+import warnings
 
 import galois
 
@@ -32,16 +33,18 @@ GROUPNAMES_URL = "https://people.maths.bris.ac.uk/~matyd/GroupNames/"
 
 @qldpc.cache.use_disk_cache(
     "group_generators",
-    key_func=lambda group: "".join(group.split()),  # strip whitespace
+    key_func=lambda group, warning_to_raise_if_calling_gap: "".join(group.split()),
 )
-def get_generators(group: str) -> GENERATORS_LIST:
+def get_generators(
+    group: str, *, warning_to_raise_if_calling_gap: str | None = None
+) -> GENERATORS_LIST:
     """Retrieve GAP group generators."""
     # try retrieving a known group
     if generators := KNOWN_GROUPS.get(group):
         return generators
 
     # try retrieving a group from GAP
-    if generators := maybe_get_generators_from_gap(group):
+    if generators := maybe_get_generators_from_gap(group, warning=warning_to_raise_if_calling_gap):
         return generators
 
     # try retrieving a group from GroupNames
@@ -58,6 +61,48 @@ def get_generators(group: str) -> GENERATORS_LIST:
     else:
         message.append("- group not indexed by GroupNames.org")
     raise ValueError("\n".join(message))
+
+
+def get_generators_from_magma(group: str) -> GENERATORS_LIST:
+    """Retrieve group generators from MAGMA."""
+    print("Run the command below in MAGMA, and copy/paste the MAGMA output here.")
+    print("Type an empty line (hit Enter twice) to finish.")
+    print("You can find an online MAGMA calculator at https://magma.maths.usyd.edu.au/calc")
+    print()
+    print(group)
+    print()
+
+    cache_name = "magma_groups"
+    cache = qldpc.cache.get_disk_cache(cache_name)
+    group_key = "".join(group.split())  # strip whitespace
+
+    if generators := cache.get(group_key, None):
+        print("NOTICE: group found in the local MAGMA group cache.  Retrieved group:")
+        print("=" * 80)
+        print(generators)
+        print("=" * 80)
+        print()
+        print(
+            "If you think that the retrieved group is incorrect, you can remove it from the cache"
+            " by running the following command:\n"
+            f'\nqldpc.cache.clear_entry("{cache_name}", "{group_key}")\n'
+        )
+        return generators
+
+    # read in MAGMA output
+    lines = []
+    while line := input():
+        lines.append(line)
+
+    # identify permutations in the output
+    permutations = re.findall(r"\((?:[\d()]|, )*\)", "\n".join(lines), re.DOTALL)
+    if not permutations:
+        raise ValueError("Invalid MAGMA output")
+
+    # compute generators
+    generators = parse_gap_permutations("\n".join(permutations), cycle_sep=", ")
+    cache[group_key] = generators
+    return generators
 
 
 @qldpc.cache.use_disk_cache("small_group_number")
@@ -103,7 +148,9 @@ def get_small_group_structure(order: int, index: int) -> str:
     return name
 
 
-def maybe_get_generators_from_gap(group: str) -> GENERATORS_LIST | None:
+def maybe_get_generators_from_gap(
+    group: str, *, warning: str | None = None
+) -> GENERATORS_LIST | None:
     """Retrieve GAP group generators from GAP directly."""
     try:
         qldpc.external.gap.require_package("GUAVA")
@@ -111,6 +158,10 @@ def maybe_get_generators_from_gap(group: str) -> GENERATORS_LIST | None:
         if re.search("GAP 4 .* installation cannot be found", str(error)):
             return None
         raise error  # pragma: no cover
+
+    # if provided a warning to raise before calling GAP, raise it now
+    if warning is not None:
+        warnings.warn(warning)
 
     # run GAP commands
     commands = [

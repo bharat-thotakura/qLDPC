@@ -383,3 +383,17 @@ def test_small_group() -> None:
         group = abstract.SmallGroup(1, 1)
     assert group == abstract.TrivialGroup()
     assert group.random() == group.identity
+
+
+def test_magma_group(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    """Retrieve a group from MAGMA."""
+    name = "AutomorphismGroup(LinearCode(Matrix(GF(2),1,2,[[1,1]])));"
+
+    # mock user inputs
+    inputs = iter(
+        ["Permutation group acting on a set of cardinality 2", "Order = 2", "    (1, 2)", ""]
+    )
+    monkeypatch.setattr("builtins.input", lambda: next(inputs))
+
+    assert abstract.Group.from_name(name, from_magma=True) == abstract.CyclicGroup(2)
+    capsys.readouterr()  # intercept print statements
