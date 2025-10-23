@@ -84,8 +84,8 @@ def get_generators_from_magma(group: str) -> GENERATORS_LIST:
         print()
         print(
             "If you think that the retrieved group is incorrect, you can remove it from the cache"
-            " by running the following command:\n"
-            f'\nqldpc.cache.clear_entry("{cache_name}", "{group_key}")\n'
+            " by running the following commands:\n"
+            f'\nimport qldpc\nqldpc.cache.clear_entry("{cache_name}", "{group_key}")\n'
         )
         return generators
 
