@@ -30,7 +30,13 @@ def test_transversal_ops() -> None:
     """Construct SWAP-transversal logical Cliffords of a code."""
     code = codes.ToricCode(2)
 
-    for local_gates in [["SWAP"], ["SWAP", "H"], ["SWAP", "H", "S"]]:
+    for local_gates in [
+        ["SWAP"],
+        ["SWAP", "H"],
+        ["SWAP", "S"],
+        ["SWAP", "SQRT_X"],
+        ["SWAP", "H", "S"],
+    ]:
         transversal_ops = circuits.get_transversal_ops(code, local_gates)
         assert len(transversal_ops) == len(local_gates) + 1
 
