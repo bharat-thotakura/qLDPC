@@ -359,6 +359,21 @@ KNOWN_GROUPS: dict[str, GENERATORS_LIST] = {
         [(3, 8), (4, 10), (5, 12), (7, 9)],
         [(3, 9), (4, 12), (5, 10), (7, 8)],
     ],  # FiveQubitCode automorphism group (SWAP + Cliffords)
+    "AutomorphismGroup(CheckMatCode([[1,1,1,1]],GF(2)))": [
+        [(0, 1)],
+        [(1, 2)],
+        [(2, 3)],
+    ],  # ToricCode(2) automorphism group (SWAP only)
+    "AutomorphismGroup(CheckMatCode([[1,1,1,1,0,0,0,0],[0,0,0,0,1,1,1,1]],GF(2)))": [
+        [(2, 3), (4, 7), (5, 6)],
+        [(4, 7, 6, 5)],
+        [(6, 7)],
+        [(5, 6, 7)],
+        [(1, 2, 3), (4, 5, 6)],
+        [(1, 3), (4, 6), (5, 7)],
+        [(0, 6, 3, 7), (1, 5), (2, 4)],
+        [(0, 7), (1, 4), (2, 5, 3, 6)],
+    ],  # ToricCode(2) automorphism group (SWAP + H/S/SQRT_X)
     "AutomorphismGroup(CheckMatCode([[1,1,1,1,0,0,0,0,1,1,1,1],[0,0,0,0,1,1,1,1,1,1,1,1]],GF(2)))": [
         [(4, 9), (5, 8, 6, 11), (7, 10)],
         [(4, 7, 6, 5), (9, 11, 10)],

@@ -413,15 +413,14 @@ class Group:
         """
         name = "".join(name.split())  # strip whitespace
         if from_magma:
-            generator_list = external.groups.get_generators_from_magma(name)
+            generators = external.groups.get_generators_from_magma(name)
         else:
             if name == "SmallGroup(1,1)":
                 return TrivialGroup()
-            generator_list = external.groups.get_generators(
+            generators = external.groups.get_generators(
                 name, warning_to_raise_if_calling_gap=warning_to_raise_if_calling_gap
             )
-        generators = [GroupMember(generator) for generator in generator_list]
-        return Group(*generators, name=name)
+        return Group(*[GroupMember(generator) for generator in generators], name=name)
 
     def to_gap_group(self) -> str:
         """Convert a Group into a GAP group."""
