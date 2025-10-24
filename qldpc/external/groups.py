@@ -95,12 +95,17 @@ def get_generators_from_magma(group: str) -> GENERATORS_LIST:
         lines.append(line)
 
     # identify permutations in the output
-    permutations = re.findall(r"\((?:[\d()]|, )*\)", "\n".join(lines), re.DOTALL)
+    one_cycle_pattern = r"\((?:\d|,\s+)+\)"
+    permutation_pattern = rf"(?:{one_cycle_pattern})+"
+    permutations = re.findall(permutation_pattern, "\n".join(lines), re.DOTALL)
     if not permutations:
         raise ValueError("Invalid MAGMA output")
 
+    # remove whitespace (and, in particular, newlines) from every permutation
+    permutations = [re.sub(r"\s+", "", permutation) for permutation in permutations]
+
     # compute generators
-    generators = parse_gap_permutations("\n".join(permutations), cycle_sep=", ")
+    generators = parse_gap_permutations("\n".join(permutations))
     cache[group_key] = generators
     return generators
 
