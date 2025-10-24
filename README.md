@@ -31,7 +31,7 @@ You can also `pip install -e 'qLDPC[dev]'` to additionally install some developm
 
 ### GAP
 
-Some features in `qLDPC` require an installation of the [GAP](https://www.gap-system.org) computer algebra system.  If you (a) use linux or macOS, and (b) use a `conda` to manage your python environment, then you can obtain GAP by running `conda install -c conda-forge gap` (or `gap-core`).  Installations without `conda` should also work, as long as `gap` is a recognized command in the command line.  Unfortunately, I have not figured out how to install [GAP](https://www.gap-system.org) in a `qLDPC`-compatible way on Windows.  If you figure this out, [please let me know](https://github.com/qLDPCOrg/qLDPC/issues/294)!
+Some features in `qLDPC` require an installation of the [GAP](https://www.gap-system.org) computer algebra system.  If you (a) use linux or macOS, and (b) use a `conda` to manage your python environment, then you can obtain GAP by running `conda install -c conda-forge gap` (or `gap-core`).  Installations without `conda` should also work, as long as `gap` is a recognized command in the command line.  Unfortunately, [GAP](https://www.gap-system.org) integration is clunky in Windows because I have not figured out how to call [GAP](https://www.gap-system.org) from the Windows command prompt.  If you figure this out, [please let me know](https://github.com/qLDPCOrg/qLDPC/issues/294)!
 
 ### macOS
 
