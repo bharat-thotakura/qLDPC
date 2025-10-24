@@ -77,9 +77,13 @@ def get_generators_from_magma(group: str) -> GENERATORS_LIST:
     group_key = "".join(group.split())  # strip whitespace
 
     if generators := cache.get(group_key, None):
-        print("NOTICE: group found in the local MAGMA group cache.  Retrieved group:")
+        print(
+            "NOTICE: group found in the local MAGMA group cache."
+            "  Retrieved group generators (in cycle notation):"
+        )
         print("=" * 80)
-        print(generators)
+        for generator in generators:
+            print(generator)
         print("=" * 80)
         print()
         print(
