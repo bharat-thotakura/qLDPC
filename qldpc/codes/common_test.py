@@ -95,7 +95,9 @@ def test_named_codes(order: int = 2) -> None:
     code = codes.RepetitionCode(order)
     checks = [list(row) for row in code.matrix.view(np.ndarray)]
 
-    with unittest.mock.patch("qldpc.external.codes.get_code", return_value=(checks, None)):
+    with unittest.mock.patch(
+        "qldpc.external.codes.get_classical_code", return_value=(checks, None)
+    ):
         assert codes.ClassicalCode.from_name(f"RepetitionCode({order})") == code
 
 
@@ -379,6 +381,17 @@ def test_qudit_stabilizers(field: int, bits: int = 5, checks: int = 3) -> None:
 
     with pytest.raises(ValueError, match="different lengths"):
         codes.QuditCode.from_strings("I", "I I", field=field)
+
+
+def test_from_qecdb_id() -> None:
+    """Retrieve a code from qecdb.org."""
+    strings = ["XXXX", "ZZZZ"]
+    distance = 2
+    is_css = True
+    code_data = (strings, distance, is_css)
+    with unittest.mock.patch("qldpc.external.codes.get_quantum_code", return_value=code_data):
+        code = codes.QuditCode.from_qecdb_id("")
+        assert codes.CSSCode.equiv(code, codes.C4Code())
 
 
 def test_qudit_deformations() -> None:
