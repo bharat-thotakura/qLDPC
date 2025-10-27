@@ -985,7 +985,7 @@ class QuditCode(AbstractCode):
     def from_qecdb_id(code_id: str) -> QuditCode:
         """Retrieve a code by ID from qecdb.org."""
         strings, distance, is_css = external.codes.get_quantum_code(code_id)
-        code = QuditCode.from_strings([" ".join(string) for string in strings], field=2)
+        code = QuditCode.from_strings(strings, field=2)
         if is_css:
             code = code.to_css()
         code._distance = distance
