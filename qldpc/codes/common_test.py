@@ -380,7 +380,7 @@ def test_qudit_stabilizers(field: int, bits: int = 5, checks: int = 3) -> None:
     assert strings == code_b.get_strings()
 
     with pytest.raises(ValueError, match="different lengths"):
-        codes.QuditCode.from_strings(["I", "I I"], field=field)
+        codes.QuditCode.from_strings(["I", "II"], field=field)
 
 
 def test_from_qecdb_id() -> None:
@@ -450,7 +450,7 @@ def test_qudit_ops() -> None:
     assert np.array_equal(logical_ops[1], [0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
     assert code.get_logical_ops() is code._logical_ops
 
-    code = codes.QuditCode.from_strings(code.get_strings() + ["I I I I I"])
+    code = codes.QuditCode.from_strings(code.get_strings() + ["IIIII"])
     assert np.array_equal(logical_ops, code.get_logical_ops())
 
     for code in get_codes_for_testing_ops():

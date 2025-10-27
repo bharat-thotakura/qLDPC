@@ -951,13 +951,27 @@ class QuditCode(AbstractCode):
 
     @staticmethod
     def from_strings(checks: Sequence[str], field: int | None = None) -> QuditCode:
-        """Construct a QuditCode from the provided parity checks."""
+        """Construct a QuditCode from the provided parity checks.
+
+        Strings such as "Z_YX" and "Z I Y X" are both recognized, but a string like "ZI Y X" is not.
+
+        Pauli-X/Y/Z operators for qudit codes with field > 2 must be annotated by an element of
+        the Galois field GF(field), such as "Z(1) _ Y(3) X(2)".  In this case "Y(a)" is an alias
+        for "X(a)*Z(a)", and strings such as "Z(1) _ X(1)*Z(3) X(2)" are also valid.
+        """
         field = field or DEFAULT_FIELD_ORDER
-        check_ops = [check.split() for check in checks]
-        num_checks = len(check_ops)
-        num_qudits = len(check_ops[0])
         operator: type[Pauli] | type[QuditPauli] = Pauli if field == 2 else QuditPauli
 
+        def parse_check(check: str) -> list[str]:
+            check = check.replace("_", "I")
+            if all(char in ["I", "X", "Y", "Z"] for char in check):
+                check = " ".join(check)
+            return check.split()
+
+        check_ops = [parse_check(check) for check in checks]
+
+        num_checks = len(checks)
+        num_qudits = len(check_ops[0])
         matrix = np.zeros((num_checks, 2, num_qudits), dtype=int)
         for index, check_op in enumerate(check_ops):
             if len(check_op) != num_qudits:
