@@ -2881,8 +2881,9 @@ class CSSCode(QuditCode):
         max_error_rate: float = 0.3,
         pauli_bias: Sequence[float] | None = None,
         *,
-        decoder_x_kwargs: dict[str, Any],
-        decoder_z_kwargs: dict[str, Any],
+        decoder_x_kwargs: dict[str, Any] | None = None,
+        decoder_z_kwargs: dict[str, Any] | None = None,
+        **decoder_kwargs: Any,
     ) -> Callable[[float | Sequence[float]], tuple[float, float]]:
         """Construct a function from physical --> logical error rate in a code capacity model.
 
@@ -2915,8 +2916,10 @@ class CSSCode(QuditCode):
         stabilizer_ops_z = self.get_stabilizer_ops(Pauli.Z, canonicalized=False)
 
         # construct decoders
-        decoder_x = decoders.get_decoder(stabilizer_ops_z, **decoder_x_kwargs)
-        decoder_z = decoders.get_decoder(stabilizer_ops_x, **decoder_z_kwargs)
+        decoder_x_kwargs = (decoder_x_kwargs or {}) | decoder_kwargs
+        decoder_z_kwargs = (decoder_z_kwargs or {}) | decoder_kwargs
+        decoder_x = decoders.get_decoder(stabilizer_ops_z, **decoder_kwargs)
+        decoder_z = decoders.get_decoder(stabilizer_ops_x, **decoder_kwargs)
         if not isinstance(decoder_x, decoders.DirectDecoder):
             decoder_x = decoders.DirectDecoder.from_indirect(decoder_x, stabilizer_ops_z)
         if not isinstance(decoder_z, decoders.DirectDecoder):
