@@ -13,7 +13,7 @@ In a nutshell, `qLDPC` provides methods to build a variety of built-in and custo
 
 See the [`examples`](https://github.com/qLDPCOrg/qLDPC/tree/main/examples) directory for some demonstrations and use-cases.
 
-Where possible, this library strives to support codes over arbitrary finite (Galois) fields -- that is, for qudits of any prime power dimension.  Circuit-related utilities are, however, limited to qubit codes.
+Where possible, this library strives to support codes over arbitrary finite (Galois) fields -- that is, for Galois qudits of any prime power dimension.  Circuit-related utilities are, however, limited to qubit codes.
 
 ## 📦 Installation
 
